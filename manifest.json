@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "GhostTab",
+  "version": "1.1",
+  "description": "👻 Stay focused with tab limits, Pomodoro timer, themes, and ghostly vibes. Unlock Pro for more power!",
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": [
+    "storage",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
+}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GhostTab</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="pastel">
+  <div class="container">
+    <h1>👻 GhostTab</h1>
+
+    <p id="status">🎯 Focus Mode: OFF</p>
+    <button id="startFocus">🚀 Start Focus</button>
+    <button id="stopFocus">🛑 Stop Focus</button>
+
+    <hr>
+
+    <label for="theme">🎨 Theme:</label>
+    <select id="theme">
+      <option value="pastel">🩷 Pastel</option>
+      <option value="midnight">🌌 Midnight</option>
+      <option value="mint">🌿 Mint</option>
+      <option value="cyber">🧬 Cyber</option>
+    </select>
+
+    <br /><br />
+
+    <label for="enforceToggle">🔒 Enforce Tab Limit</label>
+    <input type="checkbox" id="enforceToggle" />
+
+    <br /><br />
+
+    <label for="simulatePro">🔓 Simulate Pro</label>
+    <input type="checkbox" id="simulatePro" />
+
+    <!-- Pro-only: Custom Tab Limit -->
+    <div id="customTabLimitSection" style="display: none; margin-top: 10px;">
+      <label for="customTabLimit">🧮 Custom Tab Limit:</label>
+      <input type="number" id="customTabLimit" min="1" value="5" />
+    </div>
+
+    <!-- Pro-only: Custom Daily Goal -->
+    <div id="customGoalSection" style="display: none; margin-top: 10px;">
+      <label for="customGoal">🎯 Custom Daily Goal:</label>
+      <input type="number" id="customGoal" min="1" value="6" />
+    </div>
+
+    <!-- Pro-only: Custom Timer Inputs -->
+    <div id="customTimerSection" style="display: none; margin-top: 10px;">
+      <label for="customWork">💼 Work (min):</label>
+      <input type="number" id="customWork" min="1" value="30" />
+      <br />
+      <label for="customBreak">☕ Break (min):</label>
+      <input type="number" id="customBreak" min="1" value="5" />
+    </div>
+
+    <!-- Pro-only: Pomodoro History -->
+    <div id="historySection" style="display: none; margin-top: 10px;">
+      <button id="toggleHistoryBtn">📊 Show History</button>
+      <div id="historyDisplay" style="margin-top: 10px; font-size: 12px; text-align: left;"></div>
+    </div>
+
+    <hr>
+
+    <!-- Default timer controls (non-Pro) -->
+    <div id="defaultTimerSection">
+      <label for="workDuration">💼 Work:</label>
+      <select id="workDuration">
+        <option value="30">30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">60 min</option>
+      </select>
+
+      <label for="breakDuration">☕ Break:</label>
+      <select id="breakDuration">
+        <option value="5">5 min</option>
+        <option value="10">10 min</option>
+        <option value="15">15 min</option>
+      </select>
+    </div>
+
+    <hr>
+
+    <p id="timerMode">💼 Work</p>
+    <p id="pomoProgress">🍅 Pomodoros Today: 0 / 6</p>
+    <div id="ghostMeter" style="font-size: 40px; margin: 10px 0;">😴</div>
+
+    <h2 id="timerDisplay">⏳ 30:00</h2>
+    <button id="startTimer">▶️ Start</button>
+    <button id="pauseTimer">⏸️ Pause</button>
+    <button id="resetTimer">🔁 Reset</button>
+
+    <br /><br />
+    <button id="resetGoal">🔄 Reset Goal</button>
+    <button id="addSession">➕ Add Session</button>
+
+    <script src="popup.js"></script>
+  </div>
+</body>
+</html>
