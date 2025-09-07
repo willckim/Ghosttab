@@ -1,4 +1,4 @@
-// Elements
+// ========== EXISTING ELEMENT HOOKS ==========
 const startBtn = document.getElementById("startFocus");
 const stopBtn = document.getElementById("stopFocus");
 const statusText = document.getElementById("status");
@@ -22,47 +22,66 @@ const customTimerInputSection = document.getElementById("customTimerSection");
 const customWorkInput = document.getElementById("customWork");
 const customBreakInput = document.getElementById("customBreak");
 
-// --- AI Feature Elements ---
+const timerDisplay = document.getElementById("timerDisplay");
+const timerMode = document.getElementById("timerMode");
+const startTimer = document.getElementById("startTimer");
+const pauseTimer = document.getElementById("pauseTimer");
+const resetTimer = document.getElementById("resetTimer");
+
+// ========== AI ELEMENTS (present in your HTML) ==========
 const summarizeBtn = document.getElementById("summarizePage");
-const rewriteBtn = document.getElementById("rewriteText");
-const aiResult = document.getElementById("aiResult");
-
-// NEW: optional extra buttons (add these to popup.html if you want)
+const rewriteBtn   = document.getElementById("rewriteText");
 const sentimentBtn = document.getElementById("sentimentText");
-const analyzeBtn  = document.getElementById("analyzeText");
-const healthBtn   = document.getElementById("checkHealth");
+const analyzeBtn   = document.getElementById("analyzeText");
+const healthBtn    = document.getElementById("checkHealth");
+const aiResult     = document.getElementById("aiResult");
 
-// NEW: API status dot/label (exists if you added them in HTML)
+// NEW: Ask + Translate UI (updated IDs per your request)
+const askBtn       = document.getElementById("askPageBtn");
+const askInput     = document.getElementById("askQuestion");
+const translateBtn = document.getElementById("translateBtn");
+const translateTo  = document.getElementById("translateTo");
+
+// (Optional legacy selection tools – keep if they exist in your HTML)
+const btnAskSelection  = document.getElementById("btnAskSelection");
+const askOut           = document.getElementById("askOut");
+const btnSummarizeSel  = document.getElementById("btnSummarizeSel");
+const sumOut           = document.getElementById("sumOut");
+const btnRewriteSel    = document.getElementById("btnRewriteSel");
+const rewriteTone      = document.getElementById("rewriteTone");
+const rewriteOut       = document.getElementById("rewriteOut");
+
+// API status (if present)
 const apiStatusDot   = document.getElementById("apiStatusDot");
 const apiStatusLabel = document.getElementById("apiStatusLabel");
 
-// Always-on "Pro"
+// ========== ALWAYS-ON PRO UI ==========
 let isProUser = true;
 let MAX_TABS = 3;
 let dailyGoal = 6;
 
-// NEW: ping background HEALTH once on load to set dot
+// Ping API root once to color the status dot
 (async () => {
   if (!apiStatusDot || !apiStatusLabel) return;
   try {
     const res = await new Promise(r => chrome.runtime.sendMessage({ type: "HEALTH" }, r));
     if (res?.ok) {
-      apiStatusDot.style.background = "#16a34a"; // green
+      apiStatusDot.style.background = "#16a34a";
       apiStatusLabel.textContent = "online";
       apiStatusLabel.style.color = "#16a34a";
     } else {
-      apiStatusDot.style.background = "#f59e0b"; // amber
+      apiStatusDot.style.background = "#f59e0b";
       apiStatusLabel.textContent = "degraded";
       apiStatusLabel.style.color = "#f59e0b";
     }
   } catch {
-    apiStatusDot.style.background = "#ef4444"; // red
+    apiStatusDot.style.background = "#ef4444";
     apiStatusLabel.textContent = "offline";
     apiStatusLabel.style.color = "#ef4444";
   }
 })();
 
-// Initialize state
+// ========== INIT STORAGE/UI ==========
 chrome.storage.local.get(
   ["focusMode", "ghostTheme", "enforceTabs", "customTabLimit", "customDailyGoal"],
   (data) => {
@@ -88,7 +107,6 @@ chrome.storage.local.get(
   }
 );
 
-// Pro UI is always visible
 function updateProUI() {
   tabLimitSection.style.display = "block";
   customGoalSection.style.display = "block";
@@ -111,7 +129,7 @@ enforceToggle.addEventListener("change", (e) => {
   chrome.storage.local.set({ enforceTabs: e.target.checked });
 });
 
-// Focus Mode
+// ========== FOCUS MODE ==========
 startBtn.addEventListener("click", () => {
   chrome.tabs.query({}, (tabs) => {
     chrome.storage.local.get("enforceTabs", ({ enforceTabs }) => {
@@ -130,7 +148,7 @@ stopBtn.addEventListener("click", () => {
   statusText.innerText = "🎯 Focus Mode: OFF";
 });
 
-// Custom Inputs
+// Custom inputs
 customTabLimitInput.addEventListener("input", (e) => {
   const val = parseInt(e.target.value);
   if (!isNaN(val)) {
@@ -205,13 +223,7 @@ function loadPomodoroHistory() {
   });
 }
 
-// Timer
-const timerDisplay = document.getElementById("timerDisplay");
-const timerMode = document.getElementById("timerMode");
-const startTimer = document.getElementById("startTimer");
-const pauseTimer = document.getElementById("pauseTimer");
-const resetTimer = document.getElementById("resetTimer");
-
+// ========== TIMER ==========
 let timerInterval;
 let timeRemaining = 30 * 60;
 let isBreak = false;
@@ -308,7 +320,7 @@ startTimer.addEventListener("click", startPomodoro);
 pauseTimer.addEventListener("click", pausePomodoro);
 resetTimer.addEventListener("click", resetPomodoro);
 
-// On load
+// On load, resume if mid-session
 chrome.storage.local.get(["pomodoroStart", "pomodoroDuration", "pomodoroIsBreak"], (data) => {
   if (data.pomodoroStart && data.pomodoroDuration) {
     isBreak = data.pomodoroIsBreak;
@@ -318,90 +330,94 @@ chrome.storage.local.get(["pomodoroStart", "pomodoroDuration", "pomodoroIsBreak"
     updateDisplay();
   }
 });
-
 updatePomoProgressDisplay();
 
-
-// ─────────────────────────────── AI FUNCTIONS ───────────────────────────────
-
-// Get page selection if any; fallback to body text (first 8k chars).
-async function getActiveTabTextAndSelection() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  // NEW: guard for restricted pages (chrome://, web store, etc.)
-  const restricted = /^chrome:\/\//i.test(tab.url) || /^https?:\/\/chrome\.google\.com\/webstore/i.test(tab.url);
-  if (restricted) {
-    return { selection: "", text: "" , _restricted: true };
-  }
-
-  try {
-    const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const selection = window.getSelection && window.getSelection().toString();
-        const bodyText = document.body ? document.body.innerText : "";
-        return {
-          selection: (selection || "").slice(0, 4000),
-          text: (bodyText || "").slice(0, 8000)
-        };
-      }
-    });
-    return result || { selection: "", text: "" };
-  } catch (e) {
-    // If injection fails for any reason, treat as restricted
-    return { selection: "", text: "", _restricted: true };
-  }
-}
-
+// ========== AI HELPERS ==========
 function setAIBusy(busy) {
   if (!aiResult) return;
-  if (busy) aiResult.setAttribute("disabled", "true");
-  else aiResult.removeAttribute("disabled");
+  aiResult.toggleAttribute("disabled", !!busy);
   if (summarizeBtn) summarizeBtn.disabled = busy;
-  if (rewriteBtn) rewriteBtn.disabled = busy;
-  if (sentimentBtn) sentimentBtn.disabled = busy;  // NEW
-  if (analyzeBtn) analyzeBtn.disabled = busy;      // NEW
+  if (rewriteBtn)   rewriteBtn.disabled   = busy;
+  if (sentimentBtn) sentimentBtn.disabled = busy;
+  if (analyzeBtn)   analyzeBtn.disabled   = busy;
+  if (askBtn)       askBtn.disabled       = busy;
+  if (translateBtn) translateBtn.disabled = busy;
+}
+function showResult(text) {
+  if (aiResult) aiResult.value = text;
 }
 
-function showResult(text) {
-  if (!aiResult) return;
-  aiResult.value = text;
+// Helpers for fetching page text/selection from the active tab
+function isRestrictedUrl(url = "") {
+  return /^chrome:\/\//i.test(url) || /^https?:\/\/chrome\.google\.com\/webstore/i.test(url);
+}
+
+async function getActiveTabTextAndSelection() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.id || isRestrictedUrl(tab.url)) {
+    return { ok: false, error: "Restricted page; cannot access content.", text: "", selection: "" };
+  }
+
+  // 1) Try content script first
+  try {
+    const res = await chrome.tabs.sendMessage(tab.id, { type: "GHOSTTAB_GET_PAGE_TEXT" });
+    if (res && typeof res === "object" && ("ok" in res)) {
+      if (res.ok && (res.text?.trim()?.length || res.selection?.trim()?.length)) return res;
+    }
+  } catch {
+    // ignore; we'll fall back to background
+  }
+
+  // 2) Fallback: ask background to read the page via executeScript
+  try {
+    const res = await new Promise(r => chrome.runtime.sendMessage({ type: "GET_PAGE_TEXT" }, r));
+    if (res && res.ok && (res.text?.trim()?.length || res.selection?.trim()?.length)) return res;
+    return res || { ok: false, error: "Background fallback failed.", text: "", selection: "" };
+  } catch (e) {
+    return { ok: false, error: String(e || "Fallback failed"), text: "", selection: "" };
+  }
 }
 
 function warnIfRestricted(info) {
-  if (info?._restricted) {
-    showResult("⚠️ This page blocks extensions from reading content. Try another site (e.g., Wikipedia).");
+  if (!info?.ok) {
+    showResult(info?.error || "Cannot access this page.");
+    return true;
+  }
+  if (!info.text || !info.text.trim()) {
+    showResult("No readable text found on this page.");
     return true;
   }
   return false;
 }
 
-// Summarize page
+// ========== AI: BASIC BUTTONS (updated to pass text properly) ==========
 summarizeBtn?.addEventListener("click", async () => {
   try {
     setAIBusy(true);
     showResult("Summarizing…");
     const info = await getActiveTabTextAndSelection();
     if (warnIfRestricted(info)) return setAIBusy(false);
-    chrome.runtime.sendMessage({ type: "SUMMARIZE", payload: { text: info.text } }, (res) => {
-      showResult(res?.summary || res?.error || "No response");
-      setAIBusy(false);
-    });
+    chrome.runtime.sendMessage(
+      { type: "ASK_PAGE", payload: { text: info.text, question: "Summarize this page." } },
+      (res) => {
+        if (res?.answer) showResult(res.answer);
+        else if (res?.summary) showResult(res.summary);
+        else showResult(res?.error || "No response");
+        setAIBusy(false);
+      }
+    );
   } catch (e) {
     showResult(`Error: ${e?.message || e}`);
     setAIBusy(false);
   }
 });
 
-// Rewrite selection (or page)
 rewriteBtn?.addEventListener("click", async () => {
   try {
     setAIBusy(true);
     showResult("Rewriting selection…");
-    const info = await getActiveTabTextAndSelection();
-    if (warnIfRestricted(info)) return setAIBusy(false);
-    const payload = info.selection && info.selection.trim().length > 0 ? info.selection : info.text;
-    chrome.runtime.sendMessage({ type: "REWRITE", payload: { text: payload } }, (res) => {
+    // Keep using background's selection path so it prefers selected text
+    chrome.runtime.sendMessage({ type: "REWRITE_SELECTION", payload: { tone: null } }, (res) => {
       showResult(res?.rewrite || res?.error || "No response");
       setAIBusy(false);
     });
@@ -411,18 +427,18 @@ rewriteBtn?.addEventListener("click", async () => {
   }
 });
 
-// Sentiment (ONNX)
 sentimentBtn?.addEventListener("click", async () => {
   try {
     setAIBusy(true);
     showResult("Detecting sentiment…");
     const info = await getActiveTabTextAndSelection();
     if (warnIfRestricted(info)) return setAIBusy(false);
-    const payload = info.selection && info.selection.trim().length > 0 ? info.selection : info.text;
+    const payload = (info.selection && info.selection.trim().length >= 1) ? info.selection : info.text;
     chrome.runtime.sendMessage({ type: "SENTIMENT", payload: { text: payload } }, (res) => {
       if (res?.error) return showResult(`❌ ${res.error}`);
-      const label = res?.sentiment ?? res?.label ?? "(unknown)";
-      const conf  = typeof res?.confidence === "number" ? (res.confidence * 100).toFixed(2) + "%" : "";
+      const s = res?.sentiment || {};
+      const label = s.sentiment ?? s.label ?? "(unknown)";
+      const conf  = typeof s.confidence === "number" ? (s.confidence * 100).toFixed(2) + "%" : "";
       showResult(`Sentiment: ${label}${conf ? ` (${conf})` : ""}`);
       setAIBusy(false);
     });
@@ -432,19 +448,18 @@ sentimentBtn?.addEventListener("click", async () => {
   }
 });
 
-// Analyze (Sentiment + Summary; requires /analyze)
 analyzeBtn?.addEventListener("click", async () => {
   try {
     setAIBusy(true);
     showResult("Analyzing…");
     const info = await getActiveTabTextAndSelection();
     if (warnIfRestricted(info)) return setAIBusy(false);
-    const payload = info.selection && info.selection.trim().length > 0 ? info.selection : info.text;
+    const payload = (info.selection && info.selection.trim().length >= 1) ? info.selection : info.text;
     chrome.runtime.sendMessage({ type: "ANALYZE", payload: { text: payload } }, (res) => {
       if (res?.error) return showResult(`❌ ${res.error}`);
-      const s = res?.sentiment;
-      const label = s?.sentiment ?? s?.label ?? "(unknown)";
-      const conf  = typeof s?.confidence === "number" ? (s.confidence * 100).toFixed(2) + "%" : "";
+      const s = res?.sentiment || {};
+      const label = s.sentiment ?? s.label ?? "(unknown)";
+      const conf  = typeof s.confidence === "number" ? (s.confidence * 100).toFixed(2) + "%" : "";
       const summary = res?.summary || "(no summary)";
       showResult(`Sentiment: ${label}${conf ? ` (${conf})` : ""}\n\nSummary:\n${summary}`);
       setAIBusy(false);
@@ -455,7 +470,6 @@ analyzeBtn?.addEventListener("click", async () => {
   }
 });
 
-// Health ping (optional)
 healthBtn?.addEventListener("click", async () => {
   try {
     setAIBusy(true);
@@ -468,4 +482,65 @@ healthBtn?.addEventListener("click", async () => {
     showResult(`Error: ${e?.message || e}`);
     setAIBusy(false);
   }
+});
+
+// ========== NEW: Ask Page (+ top_k happens in background) ==========
+askBtn?.addEventListener("click", async () => {
+  setAIBusy(true);
+  const q = (askInput?.value || "").trim();
+  if (!q) { showResult("Please type a question for Ask Page."); return setAIBusy(false); }
+  const info = await getActiveTabTextAndSelection();
+  if (warnIfRestricted(info)) return setAIBusy(false);
+  chrome.runtime.sendMessage(
+    { type: "ASK_PAGE", payload: { text: info.text, question: q } },
+    (res) => {
+      if (res?.error) return showResult(`❌ ${res.error}`);
+      const src = (res?.sources || [])
+        .map(s => `[#${s.rank} idx=${s.chunk_idx} ${s.start}-${s.end}] ${s.preview || ""}`)
+        .join("\n");
+      showResult(`Answer:\n${res?.answer || "(no answer)"}\n\nSources:\n${src}`);
+      setAIBusy(false);
+    }
+  );
+});
+
+// ========== NEW: Translate (selection preferred, fallback to page) ==========
+translateBtn?.addEventListener("click", async () => {
+  setAIBusy(true);
+  const lang = (translateTo?.value || "").trim();
+  if (!lang) { showResult("Enter a target language (e.g., es, fr, ko)."); return setAIBusy(false); }
+  const info = await getActiveTabTextAndSelection();
+  if (warnIfRestricted(info)) return setAIBusy(false);
+  const payload = info.selection?.trim() ? info.selection : info.text;
+  chrome.runtime.sendMessage({ type: "TRANSLATE", payload: { text: payload, to: lang } }, (res) => {
+    showResult(res?.translated || res?.error || "No response");
+    setAIBusy(false);
+  });
+});
+
+// ========== OPTIONAL: Selection tools (unchanged) ==========
+btnAskSelection?.addEventListener("click", async () => {
+  const q = (askInput?.value || "").trim();
+  if (!q) return (askOut.textContent = "Enter a question.");
+  askOut.textContent = "Asking (selection)…";
+  chrome.runtime.sendMessage({ type: "ASK_SELECTION", payload: { question: q } }, (res) => {
+    if (res?.error) return (askOut.textContent = `❌ ${res.error}`);
+    const lines = (res?.sources || []).map((s) => `[${s.rank}] chunk ${s.chunk_idx} — ${s.preview}`);
+    askOut.textContent = `${res?.answer || "(no answer)"}\n\nSources:\n${lines.join("\n")}`;
+  });
+});
+
+btnSummarizeSel?.addEventListener("click", async () => {
+  sumOut.textContent = "Summarizing selection…";
+  chrome.runtime.sendMessage({ type: "SUMMARIZE_SELECTION" }, (res) => {
+    sumOut.textContent = res?.summary || res?.error || "(no summary)";
+  });
+});
+
+btnRewriteSel?.addEventListener("click", async () => {
+  rewriteOut.textContent = "Rewriting selection…";
+  const tone = (rewriteTone?.value || "").trim() || null;
+  chrome.runtime.sendMessage({ type: "REWRITE_SELECTION", payload: { tone } }, (res) => {
+    rewriteOut.textContent = res?.rewrite || res?.error || "(no rewrite)";
+  });
 });

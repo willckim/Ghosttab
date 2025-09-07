@@ -4,27 +4,37 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
 
 # Virtual environments
+.venv/
 venv/
 server/venv/
 
 # Environment variables
 .env
+.env.*
+*.env
 
 # ----------------
 # Node/Extension
 # ----------------
 node_modules/
 dist/
+build/
 *.log
+*.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # ----------------
 # Models / checkpoints
 # ----------------
-server/models/sentiment/*.onnx
-server/models/sentiment/*.pt
-server/models/sentiment/*.bin
+server/models/sentiment/*
+!server/models/sentiment/model.onnx   # keep only the ONNX export
+!server/models/sentiment/tokenizer.json
+!server/models/sentiment/config.json
 
 # ----------------
 # OS/editor cruft
@@ -32,3 +42,15 @@ server/models/sentiment/*.bin
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
+*.swp
+*.swo
+
+# ----------------
+# Coverage / testing
+# ----------------
+.coverage
+htmlcov/
+coverage.xml
+.pytest_cache/
+jest-cache/

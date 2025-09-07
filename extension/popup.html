@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GhostTab</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* lightweight helpers if styles.css misses them */
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .out { white-space:pre-wrap; font-size:12px; background:#f6f7f9; padding:8px; border-radius:6px; margin-top:6px; }
+    textarea, input, select { width:100%; box-sizing:border-box; }
+    textarea { height:80px; }
+    hr { margin: 12px 0; }
+  </style>
 </head>
 <body class="pastel">
   <div class="container">
-    <h1>👻 GhostTab</h1>
+    <h1>🌀 GhostTab AI</h1>
 
     <p id="status">🎯 Focus Mode: OFF</p>
     <button id="startFocus">🚀 Start Focus</button>
@@ -90,28 +98,34 @@
     <button id="resetGoal">🔄 Reset Goal</button>
     <button id="addSession">➕ Add Session</button>
 
-<!-- ───────────────────────────── AI TOOLS ───────────────────────────── -->
-<hr>
-<h3>🤖 AI Tools
-  <span id="apiStatusDot"
-        style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#999;margin-left:8px;vertical-align:middle;"
-        title="API status"></span>
-  <small id="apiStatusLabel" style="margin-left:6px;color:#9aa3b2;">checking…</small>
-</h3>
+<!-- ───────────────── AI TOOLS (single, clean block) ───────────────── -->
+<div class="card">
+  <h3>🤖 AI Tools
+    <span id="apiStatusDot" title="API status"></span>
+    <small id="apiStatusLabel" class="muted">checking…</small>
+  </h3>
 
-<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-  <button id="summarizePage">🧠 Summarize Page</button>
-  <button id="rewriteText">✍️ Rewrite Selection</button>
-  <button id="sentimentText">😊 Sentiment</button>
-  <button id="analyzeText">🧩 Analyze</button>
-  <button id="checkHealth" title="Ping API root for status">🩺 Health</button>
+  <div class="grid" style="margin-bottom:8px;">
+    <button id="summarizePage" class="pill">🧠 Summarize Page</button>
+    <button id="rewriteText"   class="pill">✍️ Rewrite Selection</button>
+    <button id="sentimentText" class="pill">😊 Sentiment</button>
+    <button id="analyzeText"   class="pill">🧩 Analyze</button>
+    <button id="askPageBtn"    class="pill">❓ Ask Page</button>
+    <button id="checkHealth"   class="pill secondary">🩺 Health</button>
+  </div>
+
+  <!-- Ask Page input -->
+  <input id="askQuestion" placeholder="Your question about this page…" style="margin-bottom:8px;" />
+
+  <!-- Translate controls -->
+  <div class="row" style="margin:6px 0;">
+    <input id="translateTo" placeholder="🌍 target lang (e.g., es, fr, ko)" />
+    <button id="translateBtn" class="pill secondary">Translate Selection</button>
+  </div>
+
+  <textarea id="aiResult" placeholder="AI output appears here…"></textarea>
 </div>
-
-<textarea id="aiResult"
-  placeholder="AI output appears here…"
-  rows="6"
-  style="width:100%; margin-top:4px;"></textarea>
-<!-- ─────────────────────────────────────────────────────────────────── -->
+<!-- ────────────────────────────────────────────────────────────────── -->
 
     <script src="popup.js"></script>
   </div>

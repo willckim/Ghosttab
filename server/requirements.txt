@@ -1,9 +1,17 @@
+# --- Core server ---
 fastapi
 uvicorn[standard]
-openai
 pydantic
 python-dotenv
+
+# --- LLM clients ---
+openai
 transformers
+
+# --- Inference / ML runtimes ---
+torch            # CPU build is fine
 onnxruntime
-numpy
-torch          # CPU build is fine
+numpy>=1.24
+
+# --- Embeddings / RAG ---
+sentence-transformers

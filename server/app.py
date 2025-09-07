@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import math
+import re
 from functools import lru_cache
-from typing import Literal, Optional, Tuple
+from typing import Literal, Optional, Tuple, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 # Optional deps — we handle absence gracefully
@@ -25,8 +27,13 @@ try:
 except Exception:  # pragma: no cover
     AutoTokenizer = None  # type: ignore
 
+try:
+    from sentence_transformers import SentenceTransformer  # type: ignore
+except Exception:  # pragma: no cover
+    SentenceTransformer = None  # type: ignore
+
 # ---------------------------- FastAPI ----------------------------
-app = FastAPI(title="GhostTab AI API", version=os.getenv("API_VERSION", "1.1.0"))
+app = FastAPI(title="GhostTab AI API", version=os.getenv("API_VERSION", "1.2.0"))
 
 # ---------------------------- CORS -------------------------------
 # Prefer explicit origins in prod via CORS_ALLOWED_ORIGINS env
@@ -57,6 +64,14 @@ class InTranslate(BaseModel):
     to: str = Field(min_length=2, description="Target language code: 'es', 'fr', 'ko', etc.")
 
 
+class InAskPage(BaseModel):
+    text: str
+    question: str
+    top_k: int | None = 5
+    chunk_size: int | None = 1000
+    overlap: int | None = 150
+
+
 class SummaryOut(BaseModel):
     summary: str
 
@@ -80,9 +95,12 @@ class AnalyzeOut(BaseModel):
     summary: str
 
 
+class AskPageOut(BaseModel):
+    answer: str
+    sources: List[Dict[str, Any]]
+
+
 # --------------------------- OpenAI Client ------------------------
-# We support either Azure OpenAI or OpenAI — auto-detected from env
-# Return (client, mode) where mode in {"azure", "openai"}
 @lru_cache(maxsize=1)
 def get_llm_client() -> Tuple[object | None, Optional[str]]:
     try:
@@ -116,7 +134,6 @@ def get_model_name(mode: Optional[str]) -> Optional[str]:
     """
     For Azure, return the *deployment name* (not base model).
     For OpenAI, return the model name.
-    Defaults are sensible given the user's pricing/model access.
     """
     if mode == "azure":
         return os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
@@ -154,6 +171,81 @@ def get_sentiment_runtime():
         return False, None, None, str(e)
 
 
+# --------------------------- RAG Utilities -----------------------
+def chunk_text(text: str, size: int = 1000, overlap: int = 150) -> List[Dict[str, Any]]:
+    """
+    Simple character-based chunker with overlap.
+    Returns list of {idx, start, end, text}.
+    """
+    text = re.sub(r"\s+\n", "\n", text).strip()
+    chunks: List[Dict[str, Any]] = []
+    i = 0
+    idx = 0
+    L = len(text)
+    while i < L:
+        j = min(i + size, L)
+        chunk = text[i:j]
+        chunks.append({"idx": idx, "start": i, "end": j, "text": chunk})
+        idx += 1
+        if j == L:
+            break
+        i = max(0, j - overlap)
+    return chunks
+
+
+@lru_cache(maxsize=1)
+def get_embedder() -> Optional[SentenceTransformer]:
+    """Load a small, CPU-friendly embedding model (cached)."""
+    if SentenceTransformer is None:
+        return None
+    model_name = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
+    try:
+        return SentenceTransformer(model_name, device="cpu")
+    except Exception:
+        return None
+
+
+def embed_texts(texts: List[str]) -> np.ndarray:
+    """
+    Return L2-normalized embeddings [N, D] as float32.
+    Raises 500 if NumPy is unavailable.
+    """
+    if np is None:
+        raise HTTPException(status_code=500, detail="NumPy not available for embeddings")
+
+    embedder = get_embedder()
+    if embedder is None:
+        # Safe stub: random unit vectors so dev still works without downloads
+        rng = np.random.default_rng(0)
+        X = rng.normal(size=(len(texts), 384)).astype(np.float32)
+    else:
+        X = np.asarray(
+            embedder.encode(texts, batch_size=32, show_progress_bar=False),
+            dtype=np.float32,
+        )
+    norms = np.linalg.norm(X, axis=1, keepdims=True)
+    norms = np.clip(norms, 1e-8, None)
+    return X / norms
+
+
+def top_k_by_cosine(query_vec: np.ndarray, doc_mat: np.ndarray, k: int = 5) -> List[int]:
+    """Indices of top-k most similar rows in doc_mat to query_vec (cosine)."""
+    sims = doc_mat @ query_vec.reshape(-1, 1)
+    order = np.argsort(-sims.squeeze())
+    return order[:k].tolist()
+
+
+def make_cited_prompt(question: str, chunk_texts: List[str]) -> str:
+    numbered = "\n\n".join([f"[{i+1}] {t}" for i, t in enumerate(chunk_texts)])
+    return (
+        "You are a concise assistant. Answer ONLY using the provided context. "
+        "If the answer is not present, say you don't know.\n\n"
+        f"Question: {question}\n\n"
+        f"Context:\n{numbered}\n\n"
+        "Answer with citations like [1], [2] when relevant."
+    )
+
+
 # ---------------------------- Routes -----------------------------
 @app.get("/")
 def root():
@@ -180,12 +272,10 @@ def health():
 
 
 # ------------------------- Helpers -------------------------------
-
 def _chat_complete(prompt: str) -> str:
     client, mode = get_llm_client()
 
     if client is None:
-        # Stub mode for local/dev without keys
         return "(stub) No LLM credentials configured."
 
     model = get_model_name(mode)
@@ -193,11 +283,15 @@ def _chat_complete(prompt: str) -> str:
         raise HTTPException(status_code=500, detail="Model/deployment not configured")
 
     try:
-        resp = client.chat.completions.create(  # type: ignore[attr-defined]
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-        )
+        kwargs = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        # Only set temperature if explicitly allowed
+        if os.getenv("ALLOW_TEMPERATURE", "false").lower() == "true":
+            kwargs["temperature"] = 0.2
+
+        resp = client.chat.completions.create(**kwargs)
         content = resp.choices[0].message.content or ""
         return content.strip()
     except Exception as e:  # pragma: no cover
@@ -209,7 +303,6 @@ def _sigmoid(x):
     try:
         return 1 / (1 + math.exp(-x))
     except TypeError:
-        # Fallback for numpy arrays
         return 1 / (1 + np.exp(-x))  # type: ignore
 
 
@@ -285,7 +378,6 @@ async def sentiment(inp: InText):
     if np is None:  # pragma: no cover
         # Minimal fallback if numpy is missing
         raw0, raw1 = float(logits[0][0]), float(logits[0][1])
-        # Normalize with softmax-like approach
         ex0, ex1 = math.exp(raw0), math.exp(raw1)
         p0, p1 = ex0 / (ex0 + ex1), ex1 / (ex0 + ex1)
         probs = [p0, p1]
@@ -323,10 +415,48 @@ async def analyze(inp: InText):
     return AnalyzeOut(sentiment=s, summary=summary)
 
 
+# -------- NEW: /ask_page (RAG pipeline) -------------------------
+@app.post("/ask_page", response_model=AskPageOut)
+async def ask_page(inp: InAskPage):
+    page_text = (inp.text or "").strip()
+    q = (inp.question or "").strip()
+    if not page_text:
+        raise HTTPException(status_code=400, detail="No page text provided")
+    if not q:
+        raise HTTPException(status_code=400, detail="No question provided")
+
+    # 1) Chunk
+    chunks = chunk_text(page_text, size=inp.chunk_size or 1000, overlap=inp.overlap or 150)
+    if not chunks:
+        return AskPageOut(answer="I don't know.", sources=[])
+
+    # 2) Embed
+    chunk_vecs = embed_texts([c["text"] for c in chunks])
+    query_vec = embed_texts([q])[0]
+
+    # 3) Retrieve
+    k = max(1, min(inp.top_k or 5, len(chunks)))
+    idxs = top_k_by_cosine(query_vec, chunk_vecs, k=k)
+    top_chunks = [chunks[i] for i in idxs]
+
+    # 4) Compose grounded prompt
+    prompt = make_cited_prompt(q, [c["text"] for c in top_chunks])
+
+    # 5) Answer via LLM helper (stub-safe)
+    try:
+        answer = _chat_complete(prompt)
+    except HTTPException:
+        answer = "(stub) No LLM credentials configured."
+
+    # 6) Return with source metadata
+    sources = [
+        {"rank": r + 1, "chunk_idx": c["idx"], "start": c["start"], "end": c["end"], "preview": c["text"][:220]}
+        for r, c in enumerate(top_chunks)
+    ]
+    return AskPageOut(answer=answer, sources=sources)
+
+
 # ----------------------- Error Handlers --------------------------
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_, exc: HTTPException):
-    return fastapi.responses.JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail},
-    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})

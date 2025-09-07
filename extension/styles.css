@@ -1,150 +1,215 @@
 :root {
-    --bg: #f7f5f9;
-    --btn: #a29bfe;
-    --btn-hover: #6c5ce7;
-    --text: #333;
-  }
-  
-  body {
-    font-family: 'Arial', sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
-    margin: 0;
-    padding: 10px;
-    width: 200px;
-  }
-  
-  .container {
-    text-align: center;
-  }
-  
-  h1 {
-    font-size: 20px;
-    margin-bottom: 10px;
-  }
-  
-  button {
-    margin: 5px;
-    padding: 6px 12px;
-    border: none;
-    border-radius: 8px;
-    background-color: var(--btn);
-    color: white;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: var(--btn-hover);
-  }
-  
-  select {
-    margin-top: 5px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-family: inherit;
-    background-color: white;
-    color: inherit;
-  }
-  
-  select:focus {
-    outline: none;
-    box-shadow: 0 0 4px var(--btn);
-  }
-  
-  input[type="number"] {
-    width: 60px;
-    padding: 4px 6px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-    margin: 5px;
-  }
-  
-  input[type="number"]:focus {
-    outline: none;
-    box-shadow: 0 0 4px var(--btn);
-  }
-  
-  /* Apply buttons inside sections */
-  .apply-button {
-    padding: 4px 8px;
-    font-size: 13px;
-    margin-top: 3px;
-    margin-bottom: 5px;
-  }
-  
-  /* Theme Classes */
-  body.pastel {
-    --bg: #f7f5f9;
-    --btn: #a29bfe;
-    --btn-hover: #6c5ce7;
-    --text: #333;
-  }
-  
-  body.midnight {
-    --bg: #1e1e2f;
-    --btn: #3f3f83;
-    --btn-hover: #5757b1;
-    --text: #f8f8f8;
-  }
-  
-  body.mint {
-    --bg: #e0fff4;
-    --btn: #5ed3aa;
-    --btn-hover: #36b289;
-    --text: #1e3a34;
-  }
-  
-  body.cyber {
-    --bg: #0f0f0f;
-    --btn: #00fff7;
-    --btn-hover: #00d5c5;
-    --text: #ffffff;
-  }
-  
-  body.midnight select {
-    background-color: #1e1e2f;
-    color: #f8f8f8;
-    border: 1px solid #444;
-  }
-  
-  body.cyber select {
-    background-color: #0f0f0f;
-    color: #ffffff;
-    border: 1px solid #00fff7;
-  }
-  
-  #timerDisplay {
-    font-size: 32px;
-    margin: 10px 0;
-    font-weight: bold;
-  }
-  
-  #timerMode {
-    font-size: 14px;
-    margin-bottom: 10px;
-    font-style: italic;
-  }
-  
-  #toggleSound {
-    margin-top: 10px;
-    background-color: var(--btn);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  
-  #toggleSound:hover {
-    background-color: var(--btn-hover);
-  }
-  
-  /* Utility classes for Pro UI */
-  .pro-only {
-    margin-top: 10px;
-  }
-  .hidden {
-    display: none;
-  }
+  --bg: #f7f5f9;
+  --btn: #a29bfe;
+  --btn-hover: #6c5ce7;
+  --text: #333;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 10px;
+  width: 260px; /* widened slightly to fit new AI controls */
+}
+
+.container {
+  text-align: center;
+}
+
+h1 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+button {
+  margin: 5px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--btn);
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--btn-hover);
+}
+
+select {
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-family: inherit;
+  background-color: white;
+  color: inherit;
+}
+
+select:focus {
+  outline: none;
+  box-shadow: 0 0 4px var(--btn);
+}
+
+input[type="number"],
+input[type="text"] {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  margin: 5px;
+}
+
+input:focus {
+  outline: none;
+  box-shadow: 0 0 4px var(--btn);
+}
+
+/* Apply buttons inside sections */
+.apply-button {
+  padding: 4px 8px;
+  font-size: 13px;
+  margin-top: 3px;
+  margin-bottom: 5px;
+}
+
+/* Theme Classes */
+body.pastel {
+  --bg: #f7f5f9;
+  --btn: #a29bfe;
+  --btn-hover: #6c5ce7;
+  --text: #333;
+}
+
+body.midnight {
+  --bg: #1e1e2f;
+  --btn: #3f3f83;
+  --btn-hover: #5757b1;
+  --text: #f8f8f8;
+}
+
+body.mint {
+  --bg: #e0fff4;
+  --btn: #5ed3aa;
+  --btn-hover: #36b289;
+  --text: #1e3a34;
+}
+
+body.cyber {
+  --bg: #0f0f0f;
+  --btn: #00fff7;
+  --btn-hover: #00d5c5;
+  --text: #ffffff;
+}
+
+body.midnight select {
+  background-color: #1e1e2f;
+  color: #f8f8f8;
+  border: 1px solid #444;
+}
+
+body.cyber select {
+  background-color: #0f0f0f;
+  color: #ffffff;
+  border: 1px solid #00fff7;
+}
+
+#timerDisplay {
+  font-size: 32px;
+  margin: 10px 0;
+  font-weight: bold;
+}
+
+#timerMode {
+  font-size: 14px;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+#toggleSound {
+  margin-top: 10px;
+  background-color: var(--btn);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#toggleSound:hover {
+  background-color: var(--btn-hover);
+}
+
+/* Utility classes for Pro UI */
+.pro-only {
+  margin-top: 10px;
+}
+.hidden {
+  display: none;
+}
+
+/* ─────────────── AI TOOLS card ─────────────── */
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  margin-top: 12px;
+  text-align: left;
+}
+body.midnight .card,
+body.mint .card,
+body.cyber .card { background: var(--bg); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 6px 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--btn);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pill.secondary { background: #888; }
+
+.muted {
+  color: #9aa3b2;
+  font-size: 12px;
+}
+
+#apiStatusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
+  background: #999;
+  margin-left: 6px;
+}
+
+.out {
+  white-space: pre-wrap;
+  font-size: 12px;
+  background: #f6f7f9;
+  padding: 6px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+textarea#aiResult {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  resize: vertical;
+  font-size: 13px;
+}
