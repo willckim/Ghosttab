@@ -29,25 +29,20 @@
     <label for="enforceToggle">🔒 Enforce Tab Limit</label>
     <input type="checkbox" id="enforceToggle" />
 
-    <br /><br />
-
-    <label for="simulatePro">🔓 Simulate Pro</label>
-    <input type="checkbox" id="simulatePro" />
-
-    <!-- Pro-only: Custom Tab Limit -->
-    <div id="customTabLimitSection" style="display: none; margin-top: 10px;">
+    <!-- Pro-only: Custom Tab Limit (now always visible) -->
+    <div id="customTabLimitSection" style="margin-top: 10px;">
       <label for="customTabLimit">🧮 Custom Tab Limit:</label>
       <input type="number" id="customTabLimit" min="1" value="5" />
     </div>
 
-    <!-- Pro-only: Custom Daily Goal -->
-    <div id="customGoalSection" style="display: none; margin-top: 10px;">
+    <!-- Pro-only: Custom Daily Goal (now always visible) -->
+    <div id="customGoalSection" style="margin-top: 10px;">
       <label for="customGoal">🎯 Custom Daily Goal:</label>
       <input type="number" id="customGoal" min="1" value="6" />
     </div>
 
-    <!-- Pro-only: Custom Timer Inputs -->
-    <div id="customTimerSection" style="display: none; margin-top: 10px;">
+    <!-- Pro-only: Custom Timer Inputs (now always visible) -->
+    <div id="customTimerSection" style="margin-top: 10px;">
       <label for="customWork">💼 Work (min):</label>
       <input type="number" id="customWork" min="1" value="30" />
       <br />
@@ -55,16 +50,16 @@
       <input type="number" id="customBreak" min="1" value="5" />
     </div>
 
-    <!-- Pro-only: Pomodoro History -->
-    <div id="historySection" style="display: none; margin-top: 10px;">
+    <!-- Pro-only: Pomodoro History (now always visible) -->
+    <div id="historySection" style="margin-top: 10px;">
       <button id="toggleHistoryBtn">📊 Show History</button>
-      <div id="historyDisplay" style="margin-top: 10px; font-size: 12px; text-align: left;"></div>
+      <div id="historyDisplay" style="margin-top: 10px; font-size: 12px; text-align: left; display:none;"></div>
     </div>
 
     <hr>
 
-    <!-- Default timer controls (non-Pro) -->
-    <div id="defaultTimerSection">
+    <!-- Old non-Pro timer controls (now hidden permanently) -->
+    <div id="defaultTimerSection" style="display:none;">
       <label for="workDuration">💼 Work:</label>
       <select id="workDuration">
         <option value="30">30 min</option>
@@ -94,6 +89,29 @@
     <br /><br />
     <button id="resetGoal">🔄 Reset Goal</button>
     <button id="addSession">➕ Add Session</button>
+
+<!-- ───────────────────────────── AI TOOLS ───────────────────────────── -->
+<hr>
+<h3>🤖 AI Tools
+  <span id="apiStatusDot"
+        style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#999;margin-left:8px;vertical-align:middle;"
+        title="API status"></span>
+  <small id="apiStatusLabel" style="margin-left:6px;color:#9aa3b2;">checking…</small>
+</h3>
+
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+  <button id="summarizePage">🧠 Summarize Page</button>
+  <button id="rewriteText">✍️ Rewrite Selection</button>
+  <button id="sentimentText">😊 Sentiment</button>
+  <button id="analyzeText">🧩 Analyze</button>
+  <button id="checkHealth" title="Ping API root for status">🩺 Health</button>
+</div>
+
+<textarea id="aiResult"
+  placeholder="AI output appears here…"
+  rows="6"
+  style="width:100%; margin-top:4px;"></textarea>
+<!-- ─────────────────────────────────────────────────────────────────── -->
 
     <script src="popup.js"></script>
   </div>

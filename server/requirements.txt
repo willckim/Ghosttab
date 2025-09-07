@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+openai
+pydantic
+python-dotenv
+transformers
+onnxruntime
+numpy
+torch          # CPU build is fine

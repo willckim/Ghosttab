@@ -10,7 +10,6 @@ const pomoProgress = document.getElementById("pomoProgress");
 const ghostMeter = document.getElementById("ghostMeter");
 const resetGoalBtn = document.getElementById("resetGoal");
 const addSessionBtn = document.getElementById("addSession");
-const simulateProToggle = document.getElementById("simulatePro");
 const tabLimitSection = document.getElementById("customTabLimitSection");
 const customTabLimitInput = document.getElementById("customTabLimit");
 const customGoalInput = document.getElementById("customGoal");
@@ -23,28 +22,59 @@ const customTimerInputSection = document.getElementById("customTimerSection");
 const customWorkInput = document.getElementById("customWork");
 const customBreakInput = document.getElementById("customBreak");
 
-let isProUser = false;
+// --- AI Feature Elements ---
+const summarizeBtn = document.getElementById("summarizePage");
+const rewriteBtn = document.getElementById("rewriteText");
+const aiResult = document.getElementById("aiResult");
+
+// NEW: optional extra buttons (add these to popup.html if you want)
+const sentimentBtn = document.getElementById("sentimentText");
+const analyzeBtn  = document.getElementById("analyzeText");
+const healthBtn   = document.getElementById("checkHealth");
+
+// NEW: API status dot/label (exists if you added them in HTML)
+const apiStatusDot   = document.getElementById("apiStatusDot");
+const apiStatusLabel = document.getElementById("apiStatusLabel");
+
+// Always-on "Pro"
+let isProUser = true;
 let MAX_TABS = 3;
 let dailyGoal = 6;
 
-// Initialize state
-chrome.storage.local.get([
-  "focusMode", "ghostTheme", "enforceTabs", "ghostPro",
-  "customTabLimit", "customDailyGoal"
-], (data) => {
-  statusText.innerText = data.focusMode ? "🎯 Focus Mode: ON" : "🎯 Focus Mode: OFF";
-
-  if (data.ghostTheme) {
-    document.body.classList.add(data.ghostTheme);
-    themeSelect.value = data.ghostTheme;
+// NEW: ping background HEALTH once on load to set dot
+(async () => {
+  if (!apiStatusDot || !apiStatusLabel) return;
+  try {
+    const res = await new Promise(r => chrome.runtime.sendMessage({ type: "HEALTH" }, r));
+    if (res?.ok) {
+      apiStatusDot.style.background = "#16a34a"; // green
+      apiStatusLabel.textContent = "online";
+      apiStatusLabel.style.color = "#16a34a";
+    } else {
+      apiStatusDot.style.background = "#f59e0b"; // amber
+      apiStatusLabel.textContent = "degraded";
+      apiStatusLabel.style.color = "#f59e0b";
+    }
+  } catch {
+    apiStatusDot.style.background = "#ef4444"; // red
+    apiStatusLabel.textContent = "offline";
+    apiStatusLabel.style.color = "#ef4444";
   }
+})();
 
-  enforceToggle.checked = data.enforceTabs || false;
-  isProUser = !!data.ghostPro;
-  simulateProToggle.checked = isProUser;
-  updateProUI(isProUser);
+// Initialize state
+chrome.storage.local.get(
+  ["focusMode", "ghostTheme", "enforceTabs", "customTabLimit", "customDailyGoal"],
+  (data) => {
+    statusText.innerText = data.focusMode ? "🎯 Focus Mode: ON" : "🎯 Focus Mode: OFF";
 
-  if (isProUser) {
+    if (data.ghostTheme) {
+      document.body.classList.add(data.ghostTheme);
+      themeSelect.value = data.ghostTheme;
+    }
+
+    enforceToggle.checked = data.enforceTabs || false;
+
     if (data.customTabLimit) {
       customTabLimitInput.value = data.customTabLimit;
       MAX_TABS = parseInt(data.customTabLimit);
@@ -53,27 +83,21 @@ chrome.storage.local.get([
       customGoalInput.value = data.customDailyGoal;
       dailyGoal = parseInt(data.customDailyGoal);
     }
+
+    updateProUI();
   }
-});
+);
 
-// UI switching based on Pro
-function updateProUI(enabled) {
-  tabLimitSection.style.display = enabled ? "block" : "none";
-  customGoalSection.style.display = enabled ? "block" : "none";
-  historySection.style.display = enabled ? "block" : "none";
-  historyDisplay.style.display = "none";
-  toggleHistoryBtn.innerText = "📊 Show History";
-  timerDropdownSection.style.display = enabled ? "none" : "block";
-  customTimerInputSection.style.display = enabled ? "block" : "none";
+// Pro UI is always visible
+function updateProUI() {
+  tabLimitSection.style.display = "block";
+  customGoalSection.style.display = "block";
+  historySection.style.display = "block";
+  if (historyDisplay) historyDisplay.style.display = "none";
+  if (toggleHistoryBtn) toggleHistoryBtn.innerText = "📊 Show History";
+  if (timerDropdownSection) timerDropdownSection.style.display = "none";
+  if (customTimerInputSection) customTimerInputSection.style.display = "block";
 }
-
-simulateProToggle.addEventListener("change", (e) => {
-  const isPro = e.target.checked;
-  chrome.storage.local.set({ ghostPro: isPro }, () => {
-    isProUser = isPro;
-    updateProUI(isPro);
-  });
-});
 
 // Theme
 themeSelect.addEventListener("change", (e) => {
@@ -106,7 +130,7 @@ stopBtn.addEventListener("click", () => {
   statusText.innerText = "🎯 Focus Mode: OFF";
 });
 
-// Custom Pro Inputs
+// Custom Inputs
 customTabLimitInput.addEventListener("input", (e) => {
   const val = parseInt(e.target.value);
   if (!isNaN(val)) {
@@ -173,12 +197,10 @@ function loadPomodoroHistory() {
       historyDisplay.innerHTML = "<p>No Pomodoro history yet. 🍅</p>";
       return;
     }
-
     const sorted = Object.entries(pomoLog)
       .sort((a, b) => new Date(b[0]) - new Date(a[0]))
       .slice(0, 7)
       .map(([date, count]) => `📅 <strong>${date}</strong>: ${"🍅".repeat(count)} (${count})`);
-
     historyDisplay.innerHTML = `<div>${sorted.join("<br>")}</div>`;
   });
 }
@@ -203,11 +225,7 @@ function updateDisplay() {
 }
 
 function getDurationMinutes() {
-  if (isProUser) {
-    return isBreak ? parseInt(customBreakInput.value) : parseInt(customWorkInput.value);
-  } else {
-    return isBreak ? parseInt(breakDropdown.value) : parseInt(workDropdown.value);
-  }
+  return isBreak ? parseInt(customBreakInput.value) : parseInt(customWorkInput.value);
 }
 
 function startPomodoro() {
@@ -235,7 +253,6 @@ function updateTimerFromStorage() {
       clearInterval(timerInterval);
       return;
     }
-
     const now = Date.now();
     const elapsed = Math.floor((now - pomodoroStart) / 1000);
     const remaining = pomodoroDuration - elapsed;
@@ -303,3 +320,152 @@ chrome.storage.local.get(["pomodoroStart", "pomodoroDuration", "pomodoroIsBreak"
 });
 
 updatePomoProgressDisplay();
+
+
+// ─────────────────────────────── AI FUNCTIONS ───────────────────────────────
+
+// Get page selection if any; fallback to body text (first 8k chars).
+async function getActiveTabTextAndSelection() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  // NEW: guard for restricted pages (chrome://, web store, etc.)
+  const restricted = /^chrome:\/\//i.test(tab.url) || /^https?:\/\/chrome\.google\.com\/webstore/i.test(tab.url);
+  if (restricted) {
+    return { selection: "", text: "" , _restricted: true };
+  }
+
+  try {
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const selection = window.getSelection && window.getSelection().toString();
+        const bodyText = document.body ? document.body.innerText : "";
+        return {
+          selection: (selection || "").slice(0, 4000),
+          text: (bodyText || "").slice(0, 8000)
+        };
+      }
+    });
+    return result || { selection: "", text: "" };
+  } catch (e) {
+    // If injection fails for any reason, treat as restricted
+    return { selection: "", text: "", _restricted: true };
+  }
+}
+
+function setAIBusy(busy) {
+  if (!aiResult) return;
+  if (busy) aiResult.setAttribute("disabled", "true");
+  else aiResult.removeAttribute("disabled");
+  if (summarizeBtn) summarizeBtn.disabled = busy;
+  if (rewriteBtn) rewriteBtn.disabled = busy;
+  if (sentimentBtn) sentimentBtn.disabled = busy;  // NEW
+  if (analyzeBtn) analyzeBtn.disabled = busy;      // NEW
+}
+
+function showResult(text) {
+  if (!aiResult) return;
+  aiResult.value = text;
+}
+
+function warnIfRestricted(info) {
+  if (info?._restricted) {
+    showResult("⚠️ This page blocks extensions from reading content. Try another site (e.g., Wikipedia).");
+    return true;
+  }
+  return false;
+}
+
+// Summarize page
+summarizeBtn?.addEventListener("click", async () => {
+  try {
+    setAIBusy(true);
+    showResult("Summarizing…");
+    const info = await getActiveTabTextAndSelection();
+    if (warnIfRestricted(info)) return setAIBusy(false);
+    chrome.runtime.sendMessage({ type: "SUMMARIZE", payload: { text: info.text } }, (res) => {
+      showResult(res?.summary || res?.error || "No response");
+      setAIBusy(false);
+    });
+  } catch (e) {
+    showResult(`Error: ${e?.message || e}`);
+    setAIBusy(false);
+  }
+});
+
+// Rewrite selection (or page)
+rewriteBtn?.addEventListener("click", async () => {
+  try {
+    setAIBusy(true);
+    showResult("Rewriting selection…");
+    const info = await getActiveTabTextAndSelection();
+    if (warnIfRestricted(info)) return setAIBusy(false);
+    const payload = info.selection && info.selection.trim().length > 0 ? info.selection : info.text;
+    chrome.runtime.sendMessage({ type: "REWRITE", payload: { text: payload } }, (res) => {
+      showResult(res?.rewrite || res?.error || "No response");
+      setAIBusy(false);
+    });
+  } catch (e) {
+    showResult(`Error: ${e?.message || e}`);
+    setAIBusy(false);
+  }
+});
+
+// Sentiment (ONNX)
+sentimentBtn?.addEventListener("click", async () => {
+  try {
+    setAIBusy(true);
+    showResult("Detecting sentiment…");
+    const info = await getActiveTabTextAndSelection();
+    if (warnIfRestricted(info)) return setAIBusy(false);
+    const payload = info.selection && info.selection.trim().length > 0 ? info.selection : info.text;
+    chrome.runtime.sendMessage({ type: "SENTIMENT", payload: { text: payload } }, (res) => {
+      if (res?.error) return showResult(`❌ ${res.error}`);
+      const label = res?.sentiment ?? res?.label ?? "(unknown)";
+      const conf  = typeof res?.confidence === "number" ? (res.confidence * 100).toFixed(2) + "%" : "";
+      showResult(`Sentiment: ${label}${conf ? ` (${conf})` : ""}`);
+      setAIBusy(false);
+    });
+  } catch (e) {
+    showResult(`Error: ${e?.message || e}`);
+    setAIBusy(false);
+  }
+});
+
+// Analyze (Sentiment + Summary; requires /analyze)
+analyzeBtn?.addEventListener("click", async () => {
+  try {
+    setAIBusy(true);
+    showResult("Analyzing…");
+    const info = await getActiveTabTextAndSelection();
+    if (warnIfRestricted(info)) return setAIBusy(false);
+    const payload = info.selection && info.selection.trim().length > 0 ? info.selection : info.text;
+    chrome.runtime.sendMessage({ type: "ANALYZE", payload: { text: payload } }, (res) => {
+      if (res?.error) return showResult(`❌ ${res.error}`);
+      const s = res?.sentiment;
+      const label = s?.sentiment ?? s?.label ?? "(unknown)";
+      const conf  = typeof s?.confidence === "number" ? (s.confidence * 100).toFixed(2) + "%" : "";
+      const summary = res?.summary || "(no summary)";
+      showResult(`Sentiment: ${label}${conf ? ` (${conf})` : ""}\n\nSummary:\n${summary}`);
+      setAIBusy(false);
+    });
+  } catch (e) {
+    showResult(`Error: ${e?.message || e}`);
+    setAIBusy(false);
+  }
+});
+
+// Health ping (optional)
+healthBtn?.addEventListener("click", async () => {
+  try {
+    setAIBusy(true);
+    showResult("Checking API…");
+    chrome.runtime.sendMessage({ type: "HEALTH" }, (res) => {
+      showResult(JSON.stringify(res, null, 2));
+      setAIBusy(false);
+    });
+  } catch (e) {
+    showResult(`Error: ${e?.message || e}`);
+    setAIBusy(false);
+  }
+});
