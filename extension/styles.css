@@ -1,173 +1,87 @@
+/* ========= Theme tokens ========= */
 :root {
   --bg: #f7f5f9;
   --btn: #a29bfe;
   --btn-hover: #6c5ce7;
   --text: #333;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --muted: #9aa3b2;
+  --accent: #2d7dd2;
 }
 
+/* ========= Base ========= */
 body {
-  font-family: 'Arial', sans-serif;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   background-color: var(--bg);
   color: var(--text);
   margin: 0;
   padding: 10px;
-  width: 260px; /* widened slightly to fit new AI controls */
 }
 
 .container {
   text-align: center;
+  width: 320px;
+  max-width: 360px;
+  margin: 0 auto;
+}
+/* Options page can opt-in to wider layout */
+.container.wide {
+  width: auto;
+  max-width: 760px;
+  text-align: left;
 }
 
-h1 {
-  font-size: 20px;
-  margin-bottom: 10px;
+/* Headings */
+h1 { font-size: 20px; margin-bottom: 10px; }
+
+/* Inputs */
+textarea, input, select {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+  font-size: 14px;
+  background: #fff;      /* default: white input */
+  color: #111;           /* default: dark text so it’s visible on white */
+}
+textarea { min-height: 80px; resize: vertical; }
+
+/* Placeholder colors */
+input::placeholder,
+textarea::placeholder { color: #9aa3b2; opacity: 1; }
+
+/* Focus ring */
+:where(input, select, textarea, button):focus-visible {
+  outline: 2px solid var(--btn);
+  outline-offset: 2px;
 }
 
+/* Buttons */
 button {
   margin: 5px;
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
   background-color: var(--btn);
-  color: white;
+  color: #fff;
   cursor: pointer;
+  font-weight: 600;
+}
+button:hover { background-color: var(--btn-hover); }
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  filter: grayscale(0.15);
 }
 
-button:hover {
-  background-color: var(--btn-hover);
-}
+/* Variants */
+button.primary { background: var(--accent); color: #fff; }
+button.ghost   { background: #f3f4f6; color: var(--text); }
+button.ghost:hover { background: #e5e7eb; }
 
-select {
-  margin-top: 5px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-family: inherit;
-  background-color: white;
-  color: inherit;
-}
-
-select:focus {
-  outline: none;
-  box-shadow: 0 0 4px var(--btn);
-}
-
-input[type="number"],
-input[type="text"] {
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
-  margin: 5px;
-}
-
-input:focus {
-  outline: none;
-  box-shadow: 0 0 4px var(--btn);
-}
-
-/* Apply buttons inside sections */
-.apply-button {
-  padding: 4px 8px;
-  font-size: 13px;
-  margin-top: 3px;
-  margin-bottom: 5px;
-}
-
-/* Theme Classes */
-body.pastel {
-  --bg: #f7f5f9;
-  --btn: #a29bfe;
-  --btn-hover: #6c5ce7;
-  --text: #333;
-}
-
-body.midnight {
-  --bg: #1e1e2f;
-  --btn: #3f3f83;
-  --btn-hover: #5757b1;
-  --text: #f8f8f8;
-}
-
-body.mint {
-  --bg: #e0fff4;
-  --btn: #5ed3aa;
-  --btn-hover: #36b289;
-  --text: #1e3a34;
-}
-
-body.cyber {
-  --bg: #0f0f0f;
-  --btn: #00fff7;
-  --btn-hover: #00d5c5;
-  --text: #ffffff;
-}
-
-body.midnight select {
-  background-color: #1e1e2f;
-  color: #f8f8f8;
-  border: 1px solid #444;
-}
-
-body.cyber select {
-  background-color: #0f0f0f;
-  color: #ffffff;
-  border: 1px solid #00fff7;
-}
-
-#timerDisplay {
-  font-size: 32px;
-  margin: 10px 0;
-  font-weight: bold;
-}
-
-#timerMode {
-  font-size: 14px;
-  margin-bottom: 10px;
-  font-style: italic;
-}
-
-#toggleSound {
-  margin-top: 10px;
-  background-color: var(--btn);
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-#toggleSound:hover {
-  background-color: var(--btn-hover);
-}
-
-/* Utility classes for Pro UI */
-.pro-only {
-  margin-top: 10px;
-}
-.hidden {
-  display: none;
-}
-
-/* ─────────────── AI TOOLS card ─────────────── */
-.card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.08);
-  margin-top: 12px;
-  text-align: left;
-}
-body.midnight .card,
-body.mint .card,
-body.cyber .card { background: var(--bg); }
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
+/* Secondary chip-style buttons */
 .pill {
   border-radius: 999px;
   padding: 6px 10px;
@@ -179,12 +93,161 @@ body.cyber .card { background: var(--bg); }
   font-weight: 600;
 }
 .pill.secondary { background: #888; }
+.pill:disabled  { opacity: 0.6; }
 
-.muted {
-  color: #9aa3b2;
+/* Selects */
+select {
+  margin-top: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+}
+select:focus { box-shadow: 0 0 0 3px rgba(162, 155, 254, 0.3); }
+
+/* Text inputs */
+input[type="number"],
+input[type="text"] {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  margin: 5px 0;
+}
+input:focus { box-shadow: 0 0 0 3px rgba(162, 155, 254, 0.25); }
+
+/* Apply buttons inside sections */
+.apply-button {
+  padding: 4px 8px;
+  font-size: 13px;
+  margin-top: 3px;
+  margin-bottom: 5px;
+}
+
+/* ========= Theme Variants ========= */
+body.pastel {
+  --bg: #f7f5f9;
+  --btn: #a29bfe;
+  --btn-hover: #6c5ce7;
+  --text: #333;
+  --card: #ffffff;
+}
+
+body.midnight {
+  --bg: #1e1e2f;
+  --btn: #3f3f83;
+  --btn-hover: #5757b1;
+  --text: #f8f8f8;
+  --card: #23233a;
+  --border: #3a3a52;
+}
+
+body.mint {
+  --bg: #e0fff4;
+  --btn: #5ed3aa;
+  --btn-hover: #36b289;
+  --text: #1e3a34;
+  --card: #ffffff;
+}
+
+body.cyber {
+  --bg: #0f0f0f;
+  --btn: #00fff7;
+  --btn-hover: #00d5c5;
+  --text: #ffffff;
+  --card: #121212;
+  --border: #1f1f1f;
+}
+
+/* Themed selects for dark skins */
+body.midnight select {
+  background-color: #1e1e2f;
+  color: #f8f8f8;
+  border: 1px solid #444;
+}
+body.cyber select {
+  background-color: #0f0f0f;
+  color: #ffffff;
+  border: 1px solid #00fff7;
+}
+
+/* Theme-specific input overrides (so text is visible) */
+body.midnight input,
+body.midnight textarea,
+body.midnight select {
+  background: #1e2130;
+  border: 1px solid #3a3a52;
+  color: #f8f8f8;
+}
+body.midnight input::placeholder,
+body.midnight textarea::placeholder { color: #a0a3b8; }
+
+body.cyber input,
+body.cyber textarea,
+body.cyber select {
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  color: #ffffff;
+}
+body.cyber input::placeholder,
+body.cyber textarea::placeholder { color: #8bdad7; }
+
+/* ========= Timer UI ========= */
+#timerDisplay {
+  font-size: 32px;
+  margin: 10px 0;
+  font-weight: 800;
+}
+#timerMode {
+  font-size: 14px;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+#toggleSound { margin-top: 10px; }
+
+/* ========= Pro UI helpers ========= */
+.pro-only { margin-top: 10px; }
+.hidden { display: none; }
+
+/* ========= Layout utilities ========= */
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.justify-between { justify-content: space-between; }
+.mt-6 { margin-top: 6px; }
+.mt-8 { margin-top: 8px; }
+.mt-10 { margin-top: 10px; }
+.mb-8 { margin-bottom: 8px; }
+.my-12 { margin: 12px 0; }
+.text-left { text-align: left; }
+.text-sm { font-size: 12px; }
+.link-no-underline { text-decoration: none; line-height: 28px; }
+
+/* ========= Cards / separators ========= */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  margin-top: 12px;
+  text-align: left;
+}
+hr { border: 0; border-top: 1px solid var(--border); }
+
+/* ========= Text colors & helpers ========= */
+.muted { color: var(--muted); }
+.status { font-size: 13px; }
+.hint { font-size: 12px; line-height: 1.4; }
+
+/* Inline code tag styling */
+code {
+  background: #f3f4f6;
+  padding: 2px 5px;
+  border-radius: 4px;
   font-size: 12px;
 }
 
+/* ========= API status dot (toggle by class on #apiStatus) ========= */
 #apiStatusDot {
   width: 10px;
   height: 10px;
@@ -194,7 +257,11 @@ body.cyber .card { background: var(--bg); }
   background: #999;
   margin-left: 6px;
 }
+#apiStatus.status-ok   #apiStatusDot { background: #16a34a; }
+#apiStatus.status-warn #apiStatusDot { background: #f59e0b; }
+#apiStatus.status-err  #apiStatusDot { background: #ef4444; }
 
+/* ========= Output areas ========= */
 .out {
   white-space: pre-wrap;
   font-size: 12px;
@@ -203,7 +270,6 @@ body.cyber .card { background: var(--bg); }
   border-radius: 6px;
   margin-top: 6px;
 }
-
 textarea#aiResult {
   width: 100%;
   margin-top: 6px;
@@ -212,4 +278,30 @@ textarea#aiResult {
   border: 1px solid #ccc;
   resize: vertical;
   font-size: 13px;
+}
+
+/* ========= Cards adapt to dark backgrounds ========= */
+body.midnight .card,
+body.mint .card,
+body.cyber .card { background: var(--bg); }
+
+/* ========= SAFETY FIX: Ensure inputs stay interactive ========= */
+input, select, textarea, button { pointer-events: auto; }
+fieldset[disabled] input,
+fieldset[disabled] select,
+fieldset[disabled] textarea,
+fieldset[disabled] button {
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Normalize number inputs (and satisfy VS Code vendorPrefix hint) */
+input[type="number"] {
+  appearance: textfield;        /* standard */
+  -moz-appearance: textfield;   /* Firefox */
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;     /* Chrome, Safari, Edge */
+  margin: 0;
 }

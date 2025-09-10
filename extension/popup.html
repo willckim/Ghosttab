@@ -1,73 +1,63 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
   <title>GhostTab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="styles.css" />
-  <style>
-    /* lightweight helpers if styles.css misses them */
-    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .out { white-space:pre-wrap; font-size:12px; background:#f6f7f9; padding:8px; border-radius:6px; margin-top:6px; }
-    textarea, input, select { width:100%; box-sizing:border-box; }
-    textarea { height:80px; }
-    hr { margin: 12px 0; }
-  </style>
 </head>
 <body class="pastel">
   <div class="container">
-    <h1>🌀 GhostTab AI</h1>
+    <h1 class="mb-8">🌀 GhostTab AI</h1>
 
-    <p id="status">🎯 Focus Mode: OFF</p>
-    <button id="startFocus">🚀 Start Focus</button>
-    <button id="stopFocus">🛑 Stop Focus</button>
+    <p id="status" class="muted">🎯 Focus Mode: OFF</p>
+    <div class="row">
+      <button id="startFocus" class="primary" aria-label="Start Focus">🚀 Start Focus</button>
+      <button id="stopFocus" aria-label="Stop Focus">🛑 Stop Focus</button>
+    </div>
 
-    <hr>
+    <hr class="my-12">
 
     <label for="theme">🎨 Theme:</label>
-    <select id="theme">
+    <select id="theme" aria-label="Theme">
       <option value="pastel">🩷 Pastel</option>
       <option value="midnight">🌌 Midnight</option>
       <option value="mint">🌿 Mint</option>
       <option value="cyber">🧬 Cyber</option>
     </select>
 
-    <br /><br />
+    <hr class="my-12">
 
-    <label for="enforceToggle">🔒 Enforce Tab Limit</label>
-    <input type="checkbox" id="enforceToggle" />
+    <label class="row justify-between" for="enforceToggle">
+      <span>🔒 Enforce Tab Limit</span>
+      <input type="checkbox" id="enforceToggle" />
+    </label>
 
-    <!-- Pro-only: Custom Tab Limit (now always visible) -->
-    <div id="customTabLimitSection" style="margin-top: 10px;">
+    <div id="customTabLimitSection" class="mt-10">
       <label for="customTabLimit">🧮 Custom Tab Limit:</label>
       <input type="number" id="customTabLimit" min="1" value="5" />
     </div>
 
-    <!-- Pro-only: Custom Daily Goal (now always visible) -->
-    <div id="customGoalSection" style="margin-top: 10px;">
+    <div id="customGoalSection" class="mt-10">
       <label for="customGoal">🎯 Custom Daily Goal:</label>
       <input type="number" id="customGoal" min="1" value="6" />
     </div>
 
-    <!-- Pro-only: Custom Timer Inputs (now always visible) -->
-    <div id="customTimerSection" style="margin-top: 10px;">
+    <div id="customTimerSection" class="mt-10">
       <label for="customWork">💼 Work (min):</label>
       <input type="number" id="customWork" min="1" value="30" />
-      <br />
-      <label for="customBreak">☕ Break (min):</label>
+      <label for="customBreak" class="mt-6">☕ Break (min):</label>
       <input type="number" id="customBreak" min="1" value="5" />
     </div>
 
-    <!-- Pro-only: Pomodoro History (now always visible) -->
-    <div id="historySection" style="margin-top: 10px;">
-      <button id="toggleHistoryBtn">📊 Show History</button>
-      <div id="historyDisplay" style="margin-top: 10px; font-size: 12px; text-align: left; display:none;"></div>
+    <div id="historySection" class="mt-10">
+      <button id="toggleHistoryBtn" class="pill" aria-expanded="false">📊 Show History</button>
+      <div id="historyDisplay" class="mt-10 text-sm text-left hidden"></div>
     </div>
 
-    <hr>
+    <hr class="my-12">
 
-    <!-- Old non-Pro timer controls (now hidden permanently) -->
-    <div id="defaultTimerSection" style="display:none;">
+    <div id="defaultTimerSection" class="hidden">
       <label for="workDuration">💼 Work:</label>
       <select id="workDuration">
         <option value="30">30 min</option>
@@ -75,7 +65,7 @@
         <option value="60">60 min</option>
       </select>
 
-      <label for="breakDuration">☕ Break:</label>
+      <label for="breakDuration" class="mt-6">☕ Break:</label>
       <select id="breakDuration">
         <option value="5">5 min</option>
         <option value="10">10 min</option>
@@ -83,51 +73,59 @@
       </select>
     </div>
 
-    <hr>
+    <hr class="my-12">
 
-    <p id="timerMode">💼 Work</p>
-    <p id="pomoProgress">🍅 Pomodoros Today: 0 / 6</p>
-    <div id="ghostMeter" style="font-size: 40px; margin: 10px 0;">😴</div>
+    <p id="timerMode" class="muted">💼 Work</p>
+    <p id="pomoProgress" class="muted">🍅 Pomodoros Today: 0 / 6</p>
+    <div id="ghostMeter" class="ghost-meter">😴</div>
 
-    <h2 id="timerDisplay">⏳ 30:00</h2>
-    <button id="startTimer">▶️ Start</button>
-    <button id="pauseTimer">⏸️ Pause</button>
-    <button id="resetTimer">🔁 Reset</button>
+    <h2 id="timerDisplay" class="timer-display">⏳ 30:00</h2>
+    <div class="row">
+      <button id="startTimer" class="primary">▶️ Start</button>
+      <button id="pauseTimer">⏸️ Pause</button>
+      <button id="resetTimer">🔁 Reset</button>
+    </div>
 
-    <br /><br />
-    <button id="resetGoal">🔄 Reset Goal</button>
-    <button id="addSession">➕ Add Session</button>
+    <div class="row mt-8">
+      <button id="resetGoal">🔄 Reset Goal</button>
+      <button id="addSession">➕ Add Session</button>
+    </div>
 
-<!-- ───────────────── AI TOOLS (single, clean block) ───────────────── -->
-<div class="card">
-  <h3>🤖 AI Tools
-    <span id="apiStatusDot" title="API status"></span>
-    <small id="apiStatusLabel" class="muted">checking…</small>
-  </h3>
+    <hr class="my-12">
 
-  <div class="grid" style="margin-bottom:8px;">
-    <button id="summarizePage" class="pill">🧠 Summarize Page</button>
-    <button id="rewriteText"   class="pill">✍️ Rewrite Selection</button>
-    <button id="sentimentText" class="pill">😊 Sentiment</button>
-    <button id="analyzeText"   class="pill">🧩 Analyze</button>
-    <button id="askPageBtn"    class="pill">❓ Ask Page</button>
-    <button id="checkHealth"   class="pill secondary">🩺 Health</button>
+    <div class="card" id="apiStatus">
+      <h3 class="mb-8">
+        🤖 AI Tools
+        <span id="apiStatusDot" title="API status"></span>
+        <small id="apiStatusLabel" class="muted">checking…</small>
+      </h3>
+
+      <div class="grid mb-8">
+        <button id="summarizePage" class="pill" aria-label="Summarize current page">🧠 Summarize Page</button>
+        <button id="rewriteText"   class="pill" aria-label="Rewrite selected text">✍️ Rewrite Selection</button>
+        <button id="sentimentText" class="pill" aria-label="Analyze sentiment of selection">😊 Sentiment</button>
+        <button id="analyzeText"   class="pill" aria-label="Analyze selected text">🧩 Analyze</button>
+        <button id="askPageBtn"    class="pill" aria-label="Ask a question about the page">❓ Ask Page</button>
+        <button id="checkHealth"   class="pill secondary" aria-label="Check API health">🩺 Health</button>
+      </div>
+
+      <input id="askQuestion" placeholder="Your question about this page…" aria-label="Question input" />
+
+      <div class="row mt-6">
+        <input id="translateTo" placeholder="🌍 target lang (e.g., es, fr, ko)" aria-label="Target language" />
+        <button id="translateBtn" class="pill secondary" aria-label="Translate current selection">Translate Selection</button>
+      </div>
+
+      <textarea id="aiResult" placeholder="AI output appears here…" aria-live="polite"></textarea>
+    </div>
+
+    <hr class="my-12">
+
+    <div class="row">
+      <a href="options.html" target="_blank" class="pill link-no-underline" aria-label="Open Options">Options</a>
+    </div>
   </div>
 
-  <!-- Ask Page input -->
-  <input id="askQuestion" placeholder="Your question about this page…" style="margin-bottom:8px;" />
-
-  <!-- Translate controls -->
-  <div class="row" style="margin:6px 0;">
-    <input id="translateTo" placeholder="🌍 target lang (e.g., es, fr, ko)" />
-    <button id="translateBtn" class="pill secondary">Translate Selection</button>
-  </div>
-
-  <textarea id="aiResult" placeholder="AI output appears here…"></textarea>
-</div>
-<!-- ────────────────────────────────────────────────────────────────── -->
-
-    <script src="popup.js"></script>
-  </div>
+  <script src="popup.js"></script>
 </body>
 </html>

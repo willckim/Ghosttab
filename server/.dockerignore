@@ -1,0 +1,76 @@
+# ----------------
+# Python caches & build artifacts
+# ----------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+build/
+dist/
+*.whl
+
+# ----------------
+# Virtual envs & local tools
+# ----------------
+venv/
+.venv/
+env/
+pip-wheel-metadata/
+
+# ----------------
+# Environment & secrets
+# ----------------
+.env
+.env.*
+*.env
+
+# ----------------
+# Test / lint caches
+# ----------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# ----------------
+# Editors / OS cruft
+# ----------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ----------------
+# Logs & temp
+# ----------------
+*.log
+*.tmp
+*.pid
+
+# ----------------
+# Models / checkpoints
+# Ignore heavy artifacts, but keep runtime files
+# ----------------
+models/sentiment/*
+!models/sentiment/model.onnx
+!models/sentiment/tokenizer.json
+!models/sentiment/tokenizer_config.json
+!models/sentiment/special_tokens_map.json
+!models/sentiment/vocab.txt
+!models/sentiment/config.json
+
+# ----------------
+# Node/extension artifacts (if present in repo root)
+# ----------------
+node_modules/
+dist/
+
+# ----------------
+# Git
+# ----------------
+.git
+.gitignore

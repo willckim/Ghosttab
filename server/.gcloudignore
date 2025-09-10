@@ -1,0 +1,16 @@
+# ============================
+# Cloud Build ignore patterns
+# ============================
+
+# Ignore itself
+.gcloudignore
+
+# Ignore Git metadata (not needed in build context)
+.git
+.git/**
+
+# (Optional) ignore local caches if present at repo root
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd

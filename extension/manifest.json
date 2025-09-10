@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GhostTab AI",
-  "version": "2.0.3",
+  "version": "2.1.3",
   "description": "Stay focused with tab limits, Pomodoro timer, themes, and AI tools for summarizing, rewriting, translating, and sentiment analysis.",
 
   "icons": {
@@ -12,23 +12,26 @@
 
   "permissions": [
     "storage",
-    "notifications",
     "activeTab",
     "scripting",
     "contextMenus",
+    "notifications",
     "tabs"
   ],
 
   "host_permissions": [
-    "https://*/*",
-    "http://*/*"
+    "https://ghosttab-api-611064069137.us-central1.run.app/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
 
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
 
   "action": {
+    "default_title": "GhostTab AI",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icon.png",
@@ -36,15 +39,6 @@
       "128": "icon.png"
     }
   },
-
-  "content_scripts": [
-    {
-      "matches": ["https://*/*", "http://*/*"],
-      "exclude_matches": ["*://chrome.google.com/webstore/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
 
   "commands": {
     "summarize": {
@@ -62,7 +56,15 @@
     "open_in_tab": true
   },
 
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
   "content_security_policy": {
-    "extension_pages": "base-uri 'self'; object-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8000 http://localhost:8000"
+    "extension_pages": "base-uri 'self'; object-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ghosttab-api-611064069137.us-central1.run.app http://127.0.0.1 http://localhost"
   }
 }

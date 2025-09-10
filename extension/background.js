@@ -6,7 +6,7 @@ let focusModeEnabled = false;
 function showRateLimitedNotification(options) {
   const now = Date.now();
   if (now - lastNotificationTime > 3000) {
-    chrome.notifications.create(options);
+    try { chrome.notifications.create(options); } catch {}
     lastNotificationTime = now;
   }
 }
@@ -21,15 +21,15 @@ async function updateBadge(tabsCount, maxTabs, enforce) {
   try {
     const text = focusModeEnabled ? `${Math.min(tabsCount, 99)}` : "";
     await chrome.action.setBadgeText({ text });
-    await chrome.action.setBadgeBackgroundColor({
-      color: enforce ? "#D7263D" : "#2D7DD2",
-    });
+    await chrome.action.setBadgeBackgroundColor({ color: enforce ? "#D7263D" : "#2D7DD2" });
     await chrome.action.setTitle({
       title: focusModeEnabled
         ? `GhostTab Focus: ${tabsCount}/${maxTabs} ${enforce ? "(strict)" : ""}`
         : "GhostTab",
     });
-  } catch { /* badge might not be available on all builds */ }
+  } catch {
+    // action API might not be available in some contexts
+  }
 }
 
 function enableFocusMode() {
@@ -46,8 +46,6 @@ function enableFocusMode() {
         await updateBadge(count, MAX_TABS, enforce);
 
         if (count > MAX_TABS) {
-          console.log(`[GhostTab] Too many tabs: ${count}/${MAX_TABS}`);
-
           if (enforce && tab?.id) {
             chrome.tabs.remove(tab.id, () => void chrome.runtime.lastError);
           }
@@ -55,15 +53,11 @@ function enableFocusMode() {
           showRateLimitedNotification({
             type: "basic",
             iconUrl: chrome.runtime.getURL("icon.png"),
-            title: "👻 GhostTab Alert",
+            title: "GhostTab Alert",
             message: enforce
               ? `🚫 Too many tabs! Extra tab closed. (${count}/${MAX_TABS})`
-              : `⚠️ Tab limit exceeded. You have ${count} tabs open.`,
+              : `⚠️ Tab limit exceeded. You have ${count} tabs open.`
           });
-        } else {
-          console.log(
-            `[GhostTab] Tab created: ${count}/${MAX_TABS} (enforced: ${enforce})`
-          );
         }
       });
     });
@@ -76,7 +70,7 @@ function enableFocusMode() {
     chrome.storage.local.get(["enforceTabs", "customTabLimit"], (data) => {
       const enforce = Boolean(data?.enforceTabs);
       const MAX_TABS = parseLimit(data?.customTabLimit, 3);
-      chrome.tabs.query({}, (tabs) => updateBadge(tabs.length, MAX_TABS, enforce));
+      chrome.tabs.query({}, (tabs) => void updateBadge(tabs.length, MAX_TABS, enforce));
     });
   };
   chrome.tabs.onRemoved.addListener(boundUpdated);
@@ -100,7 +94,7 @@ function disableFocusMode() {
     enableFocusMode._boundUpdated = null;
   }
   focusModeEnabled = false;
-  chrome.action.setBadgeText({ text: "" }).catch?.(() => {});
+  try { chrome.action.setBadgeText({ text: "" }); } catch {}
 }
 
 // Enable focus mode on startup if previously enabled
@@ -119,16 +113,32 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// ────────────────────────────── AI Bridge (Improved) ─────────────────────────────
-const DEFAULT_API_BASE = "http://127.0.0.1:8000";
+// ────────────────────────────── AI Bridge (Prod-safe) ─────────────────────────────
+const CLOUD_RUN_BASE = "https://ghosttab-api-611064069137.us-central1.run.app";
+// Treat builds with “Dev” in the name as local-dev (optional convenience)
+const IS_DEV_BUILD = /\bdev\b/i.test(chrome.runtime.getManifest?.().name || "");
+const LOCAL_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i;
 
-function getApiBase() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(["apiBase"], (data) => {
-      const base = (data?.apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
-      resolve(base);
-    });
-  });
+// Default base: Cloud in prod, localhost in dev
+const DEFAULT_API_BASE = IS_DEV_BUILD ? "http://127.0.0.1:8000" : CLOUD_RUN_BASE;
+
+async function getApiBase() {
+  const { apiBase } = await chrome.storage.local.get(["apiBase"]);
+  const saved = (apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
+  // In production, never return a localhost base (prevents CSP violations)
+  if (!IS_DEV_BUILD && LOCAL_RE.test(saved)) return CLOUD_RUN_BASE;
+  return saved;
+}
+
+async function getApiKey() {
+  const { apiKey } = await chrome.storage.local.get(["apiKey"]);
+  return (typeof apiKey === "string" && apiKey.trim()) ? apiKey.trim() : null;
+}
+
+// NEW: optional provider preference ("azure" | "openai")
+async function getLlmPref() {
+  const { llmProvider } = await chrome.storage.local.get(["llmProvider"]);
+  return (llmProvider === "azure" || llmProvider === "openai") ? llmProvider : null;
 }
 
 function isRestrictedUrl(url = "") {
@@ -140,7 +150,7 @@ async function getActiveTab() {
   return tab;
 }
 
-// Prefer content.js (fast, reliable). Fallback to scripting if content is missing.
+// Prefer content.js (fast). Fallback to executeScript if content is missing.
 async function getPageData() {
   const tab = await getActiveTab();
   if (!tab?.id || isRestrictedUrl(tab.url)) {
@@ -167,7 +177,7 @@ async function getPageData() {
         } catch (e) {
           return { ok: false, error: String(e) };
         }
-      },
+      }
     });
     return result || { ok: false, error: "Unknown executeScript failure" };
   } catch (e) {
@@ -175,16 +185,13 @@ async function getPageData() {
   }
 }
 
-/**
- * postJSON with timeout & retries
- * @param {string} path - e.g. "/summarize"
- * @param {any} body  - JSON payload
- * @param {object} opts - { timeoutMs?: number, retries?: number }
- */
+/** postJSON with timeout & retries + x-api-key header (+ x-llm override if set) */
 async function postJSON(path, body, opts = {}) {
   const { timeoutMs = 15000, retries = 2 } = opts;
   const apiBase = await getApiBase();
   const url = `${apiBase}${path}`;
+  const apiKey = await getApiKey();
+  const llmPref = await getLlmPref();
 
   let attempt = 0;
   const backoff = (n) => new Promise((r) => setTimeout(r, 400 * Math.pow(2, n)));
@@ -197,14 +204,18 @@ async function postJSON(path, body, opts = {}) {
     const t = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const headers = {
+        "Content-Type": "application/json",
+        "X-GhostTab-Client": `ext/${clientVersion}`
+      };
+      if (apiKey) headers["x-api-key"] = apiKey;
+      if (llmPref) headers["x-llm"] = llmPref; // ← provider override
+
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-GhostTab-Client": `ext/${clientVersion}`,
-        },
+        headers,
         body: JSON.stringify(body || {}),
-        signal: controller.signal,
+        signal: controller.signal
       });
 
       clearTimeout(t);
@@ -212,10 +223,10 @@ async function postJSON(path, body, opts = {}) {
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         if (res.status === 401 || res.status === 403) {
-          throw new Error(`Unauthorized. Check backend key/config. (${res.status}) ${text}`);
+          throw new Error(`Unauthorized. Check API key/config. (${res.status}) ${text}`);
         }
         if (res.status === 404) {
-          throw new Error(`Endpoint not found: ${path}. Is the server running the correct route?`);
+          throw new Error(`Endpoint not found: ${path}. Is the server exposing this route?`);
         }
         throw new Error(`API ${path} failed: ${res.status} ${text}`);
       }
@@ -223,6 +234,10 @@ async function postJSON(path, body, opts = {}) {
       return await res.json();
     } catch (err) {
       clearTimeout(t);
+      // Improve timeout message for the UI
+      if (err?.name === "AbortError") {
+        if (attempt >= retries) throw new Error("Request timed out");
+      }
       if (attempt < retries) {
         await backoff(attempt++);
         continue;
@@ -259,13 +274,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   (async () => {
     try {
       switch (msg?.type) {
-        // Utility: let popup fetch page text via background fallback
         case "GET_PAGE_TEXT": {
-          const data = await getPageData(); // { ok, text, selection, error? }
+          const data = await getPageData();
           return sendResponse(data);
         }
 
-        // Direct text from caller (kept from your previous bridge)
         case "SUMMARIZE": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: false });
           const data = await postJSON("/summarize", { text });
@@ -286,15 +299,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case "SENTIMENT": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: true });
           const raw = await postJSON("/sentiment", { text });
-           // Normalize to nested shape:
-           const s = (raw && typeof raw === "object" && raw.sentiment && typeof raw.sentiment === "object")
-               ? raw.sentiment
-               : raw;
-                 const label = (s && (s.sentiment ?? s.label)) || null;
-                 const confidence = (s && (typeof s.confidence === "number" ? s.confidence :
-                typeof s.score === "number" ? s.score : null)) ?? null;
-                  return sendResponse({ sentiment: { sentiment: label, confidence } });
-                }
+          const s = (raw && typeof raw === "object" && raw.sentiment && typeof raw.sentiment === "object")
+            ? raw.sentiment
+            : raw;
+          const label = (s && (s.sentiment ?? s.label)) || null;
+          const confidence = (s && (typeof s.confidence === "number" ? s.confidence :
+                                     typeof s.score === "number" ? s.score : null)) ?? null;
+          return sendResponse({ sentiment: { sentiment: label, confidence } });
+        }
         case "ANALYZE": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: true });
           const data = await postJSON("/analyze", { text });
@@ -302,7 +314,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
 
         // Page/selection flows
-        // UPDATED: requires payload.text + payload.question and includes top_k: 5
         case "ASK_PAGE": {
           requireString("text", msg?.payload?.text);
           requireString("question", msg?.payload?.question);
@@ -311,7 +322,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             question: msg.payload.question,
             top_k: 5
           });
-          return sendResponse(data); // { answer, sources[] }
+          return sendResponse(data);
         }
         case "ASK_SELECTION": {
           const q = (msg?.payload?.question || "").trim();
@@ -350,16 +361,69 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           return sendResponse(data);
         }
 
+        // ─────────────────────────── HEALTH (Upgraded) ───────────────────────────
         case "HEALTH": {
           const apiBase = await getApiBase();
           const controller = new AbortController();
-          const t = setTimeout(() => controller.abort(), 5000);
+          const t = setTimeout(() => controller.abort(), 6000);
+
+          const tryGet = async (path) => {
+            try {
+              const res = await fetch(`${apiBase}${path}?t=${Date.now()}`, {
+                method: "GET",
+                cache: "no-store",
+                signal: controller.signal,
+              });
+              let json = {};
+              try { json = await res.json(); } catch {}
+              return { ok: res.ok, status: res.status, json };
+            } catch (e) {
+              return { ok: false, status: 0, json: { error: e?.message || "network" } };
+            }
+          };
+
           try {
-            const res = await fetch(`${apiBase}/`, { method: "GET", signal: controller.signal });
+            // 1) /ping → 2) /health → 3) /
+            let r = await tryGet("/ping");
+            if (!r.ok) r = await tryGet("/health");
+            if (!r.ok) r = await tryGet("/");
+
+            // If still not OK, it might be auth-gated. Do a tiny POST to /summarize
+            if (!r.ok) {
+              const headers = { "content-type": "application/json" };
+              const apiKey = await getApiKey();
+              const llmPref = await getLlmPref();
+              if (apiKey) headers["x-api-key"] = apiKey;
+              if (llmPref) headers["x-llm"] = llmPref;
+              try {
+                const resp = await fetch(`${apiBase}/summarize`, {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({ text: "ping" }),
+                  signal: controller.signal,
+                });
+                // 200 → online, 401/403 → reachable but needs auth (degraded)
+                if (resp.status === 200) {
+                  clearTimeout(t);
+                  const j = await resp.json().catch(() => ({}));
+                  return sendResponse({ ok: true, summary: j?.summary ?? "", mode: "post-ok" });
+                }
+                if (resp.status === 401 || resp.status === 403) {
+                  clearTimeout(t);
+                  return sendResponse({ ok: false, auth: true, error: "auth required" });
+                }
+              } catch (e) {
+                // fall through
+              }
+            }
+
             clearTimeout(t);
-            const json = await res.json().catch(() => ({}));
-            json.ok = Boolean(json?.ok);
-            return sendResponse(json);
+            if (r.ok) return sendResponse({ ok: true, ...r.json });
+            if (r.status === 401 || r.status === 403) {
+              // reachable but needs auth
+              return sendResponse({ ok: false, auth: true, ...r.json });
+            }
+            return sendResponse({ ok: false, ...r.json });
           } catch (e) {
             clearTimeout(t);
             return sendResponse({ ok: false, error: e?.message || "unreachable" });
@@ -384,7 +448,15 @@ self.addEventListener?.("unload", () => {
 });
 
 // ─────────────────────────── OPTIONAL EXTRAS ───────────────────────────
-chrome.runtime.onInstalled?.addListener(() => {
+chrome.runtime.onInstalled?.addListener(async () => {
+  try {
+    // Default apiBase on first install; migrate away from localhost in prod
+    const { apiBase } = await chrome.storage.local.get(["apiBase"]);
+    let base = apiBase || DEFAULT_API_BASE;
+    if (!IS_DEV_BUILD && LOCAL_RE.test(base)) base = CLOUD_RUN_BASE;
+    await chrome.storage.local.set({ apiBase: base });
+  } catch {}
+
   try {
     chrome.contextMenus?.create({
       id: "ghosttab-analyze",
@@ -399,21 +471,25 @@ chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   try {
     const data = await postJSON("/analyze", { text: info.selectionText });
     const conf = data?.sentiment?.confidence;
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icon.png"),
-      title: "GhostTab Analyze",
-      message: `Sentiment: ${data?.sentiment?.sentiment} ${
-        typeof conf === "number" ? `(${(conf * 100).toFixed(1)}%)` : ""
-      }`
-    });
+    try {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icon.png"),
+        title: "GhostTab Analyze",
+        message: `Sentiment: ${data?.sentiment?.sentiment} ${
+          typeof conf === "number" ? `(${(conf * 100).toFixed(1)}%)` : ""
+        }`
+      });
+    } catch {}
   } catch (e) {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icon.png"),
-      title: "GhostTab Error",
-      message: e?.message || "Network error"
-    });
+    try {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icon.png"),
+        title: "GhostTab Error",
+        message: e?.message || "Network error"
+      });
+    } catch {}
   }
 });
 
@@ -421,12 +497,14 @@ chrome.commands?.onCommand.addListener(async (command) => {
   if (!["summarize", "rewrite"].includes(command)) return;
   const tab = await getActiveTab();
   if (!tab?.id || isRestrictedUrl(tab.url)) {
-    chrome.notifications.create({
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icon.png"),
-      title: "GhostTab",
-      message: "This page blocks content access. Try a normal website."
-    });
+    try {
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icon.png"),
+        title: "GhostTab",
+        message: "This page blocks content access. Try a normal website."
+      });
+    } catch {}
     return;
   }
 
@@ -440,21 +518,30 @@ chrome.commands?.onCommand.addListener(async (command) => {
   try {
     if (command === "summarize") {
       await postJSON("/summarize", { text });
-      chrome.notifications.create({
-        type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
-        title: "GhostTab", message: "Summary requested."
-      });
+      try {
+        chrome.notifications.create({
+          type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
+          title: "GhostTab", message: "Summary requested."
+        });
+      } catch {}
     } else if (command === "rewrite") {
       await postJSON("/rewrite", { text });
-      chrome.notifications.create({
-        type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
-        title: "GhostTab", message: "Rewrite requested."
-      });
+      try {
+        chrome.notifications.create({
+          type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
+          title: "GhostTab", message: "Rewrite requested."
+        });
+      } catch {}
     }
   } catch (e) {
-    chrome.notifications.create({
-      type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
-      title: "GhostTab Error", message: e?.message || "Network error"
-    });
+    try {
+      chrome.notifications.create({
+        type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
+        title: "GhostTab Error", message: e?.message || "Network error"
+      });
+    } catch {}
   }
 });
+
+// Mark file as an ES module (helps some bundlers/linting setups)
+export {};

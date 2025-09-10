@@ -5,19 +5,29 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.so
+*.egg-info/
+build/
+dist/
+*.whl
 
+# ----------------
 # Virtual environments
+# ----------------
 .venv/
 venv/
+env/
 server/venv/
 
+# ----------------
 # Environment variables
+# ----------------
 .env
 .env.*
 *.env
 
 # ----------------
-# Node/Extension
+# Node / Extension artifacts
 # ----------------
 node_modules/
 dist/
@@ -31,13 +41,18 @@ yarn-error.log*
 # ----------------
 # Models / checkpoints
 # ----------------
+# Ignore everything in sentiment model folder…
 server/models/sentiment/*
-!server/models/sentiment/model.onnx   # keep only the ONNX export
+# …but keep the ONNX export + tokenizer/config files
+!server/models/sentiment/model.onnx
 !server/models/sentiment/tokenizer.json
+!server/models/sentiment/tokenizer_config.json
+!server/models/sentiment/special_tokens_map.json
+!server/models/sentiment/vocab.txt
 !server/models/sentiment/config.json
 
 # ----------------
-# OS/editor cruft
+# OS / editor cruft
 # ----------------
 .DS_Store
 Thumbs.db
