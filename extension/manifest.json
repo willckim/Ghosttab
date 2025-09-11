@@ -1,8 +1,10 @@
 {
   "manifest_version": 3,
   "name": "GhostTab AI",
-  "version": "2.1.3",
-  "description": "Stay focused with tab limits, Pomodoro timer, themes, and AI tools for summarizing, rewriting, translating, and sentiment analysis.",
+  "short_name": "GhostTab",
+  "version": "2.1.4",
+  "description": "Stay focused with tab limits, a Pomodoro timer, themes, and AI tools (summarize, rewrite, translate, sentiment).",
+  "minimum_chrome_version": "109",
 
   "icons": {
     "16": "icon.png",
@@ -20,9 +22,7 @@
   ],
 
   "host_permissions": [
-    "https://ghosttab-api-611064069137.us-central1.run.app/*",
-    "http://127.0.0.1/*",
-    "http://localhost/*"
+    "https://ghosttab-api-611064069137.us-central1.run.app/*"
   ],
 
   "background": {
@@ -58,13 +58,13 @@
 
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
   ],
 
   "content_security_policy": {
-    "extension_pages": "base-uri 'self'; object-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ghosttab-api-611064069137.us-central1.run.app http://127.0.0.1 http://localhost"
+    "extension_pages": "base-uri 'self'; object-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ghosttab-api-611064069137.us-central1.run.app"
   }
 }
