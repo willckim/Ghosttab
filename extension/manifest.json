@@ -56,14 +56,6 @@
     "open_in_tab": true
   },
 
-  "content_scripts": [
-    {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-
   "content_security_policy": {
     "extension_pages": "base-uri 'self'; object-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ghosttab-api-611064069137.us-central1.run.app"
   }
