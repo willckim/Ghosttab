@@ -122,6 +122,11 @@ const LOCAL_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i;
 // Default base: Cloud in prod, localhost in dev
 const DEFAULT_API_BASE = IS_DEV_BUILD ? "http://127.0.0.1:8000" : CLOUD_RUN_BASE;
 
+// ---- LLM call tuning ----
+const MAX_INPUT_CHARS = 6000;   // clip big pages to keep latency/cost down
+const LLM_TIMEOUT_MS  = 35000;  // summarize/rewrite/translate/analyze
+const ASK_TIMEOUT_MS  = 45000;  // ask_page can be slower (RAG + LLM)
+
 async function getApiBase() {
   const { apiBase } = await chrome.storage.local.get(["apiBase"]);
   const saved = (apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
@@ -135,7 +140,7 @@ async function getApiKey() {
   return (typeof apiKey === "string" && apiKey.trim()) ? apiKey.trim() : null;
 }
 
-// NEW: optional provider preference ("azure" | "openai")
+// optional provider preference ("azure" | "openai")
 async function getLlmPref() {
   const { llmProvider } = await chrome.storage.local.get(["llmProvider"]);
   return (llmProvider === "azure" || llmProvider === "openai") ? llmProvider : null;
@@ -209,7 +214,7 @@ async function postJSON(path, body, opts = {}) {
         "X-GhostTab-Client": `ext/${clientVersion}`
       };
       if (apiKey) headers["x-api-key"] = apiKey;
-      if (llmPref) headers["x-llm"] = llmPref; // ← provider override
+      if (llmPref) headers["x-llm"] = llmPref; // provider override
 
       const res = await fetch(url, {
         method: "POST",
@@ -234,7 +239,6 @@ async function postJSON(path, body, opts = {}) {
       return await res.json();
     } catch (err) {
       clearTimeout(t);
-      // Improve timeout message for the UI
       if (err?.name === "AbortError") {
         if (attempt >= retries) throw new Error("Request timed out");
       }
@@ -281,24 +285,28 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
         case "SUMMARIZE": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: false });
-          const data = await postJSON("/summarize", { text });
+          const clipped = text.length > MAX_INPUT_CHARS ? text.slice(0, MAX_INPUT_CHARS) : text;
+          const data = await postJSON("/summarize", { text: clipped }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "REWRITE": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: true });
+          const clipped = text.length > MAX_INPUT_CHARS ? text.slice(0, MAX_INPUT_CHARS) : text;
           const tone = typeof msg?.payload?.tone === "string" ? msg.payload.tone : undefined;
-          const data = await postJSON("/rewrite", { text, tone });
+          const data = await postJSON("/rewrite", { text: clipped, tone }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "TRANSLATE": {
           requireString("to", msg?.payload?.to);
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: true });
-          const data = await postJSON("/translate", { text, to: msg.payload.to });
+          const clipped = text.length > MAX_INPUT_CHARS ? text.slice(0, MAX_INPUT_CHARS) : text;
+          const data = await postJSON("/translate", { text: clipped, to: msg.payload.to }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "SENTIMENT": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: true });
-          const raw = await postJSON("/sentiment", { text });
+          const clipped = text.length > MAX_INPUT_CHARS ? text.slice(0, MAX_INPUT_CHARS) : text;
+          const raw = await postJSON("/sentiment", { text: clipped }, { timeoutMs: LLM_TIMEOUT_MS });
           const s = (raw && typeof raw === "object" && raw.sentiment && typeof raw.sentiment === "object")
             ? raw.sentiment
             : raw;
@@ -309,7 +317,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         }
         case "ANALYZE": {
           const text = await resolveTextFromMessageOrPage(msg, { preferSelection: true });
-          const data = await postJSON("/analyze", { text });
+          const clipped = text.length > MAX_INPUT_CHARS ? text.slice(0, MAX_INPUT_CHARS) : text;
+          const data = await postJSON("/analyze", { text: clipped }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
 
@@ -317,11 +326,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case "ASK_PAGE": {
           requireString("text", msg?.payload?.text);
           requireString("question", msg?.payload?.question);
+          const clipped = msg.payload.text.length > MAX_INPUT_CHARS
+            ? msg.payload.text.slice(0, MAX_INPUT_CHARS)
+            : msg.payload.text;
           const data = await postJSON("/ask_page", {
-            text: msg.payload.text,
+            text: clipped,
             question: msg.payload.question,
             top_k: 5
-          });
+          }, { timeoutMs: ASK_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "ASK_SELECTION": {
@@ -330,7 +342,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const { ok, selection, text, error } = await getPageData();
           if (!ok) throw new Error(error || "Failed to read page");
           const used = (selection && selection.trim().length >= 40) ? selection : text;
-          const data = await postJSON("/ask_page", { text: used, question: q });
+          const clipped = used.length > MAX_INPUT_CHARS ? used.slice(0, MAX_INPUT_CHARS) : used;
+          const data = await postJSON("/ask_page", { text: clipped, question: q }, { timeoutMs: ASK_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "SUMMARIZE_SELECTION": {
@@ -338,7 +351,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           if (!ok) throw new Error(error || "Failed to read selection");
           const sel = (selection || "").trim();
           if (!sel) throw new Error("No text selected.");
-          const data = await postJSON("/summarize", { text: sel });
+          const clipped = sel.length > MAX_INPUT_CHARS ? sel.slice(0, MAX_INPUT_CHARS) : sel;
+          const data = await postJSON("/summarize", { text: clipped }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "REWRITE_SELECTION": {
@@ -347,7 +361,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           if (!ok) throw new Error(error || "Failed to read selection");
           const sel = (selection || "").trim();
           if (!sel) throw new Error("No text selected.");
-          const data = await postJSON("/rewrite", { text: sel, tone });
+          const clipped = sel.length > MAX_INPUT_CHARS ? sel.slice(0, MAX_INPUT_CHARS) : sel;
+          const data = await postJSON("/rewrite", { text: clipped, tone }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
         case "TRANSLATE_SELECTION": {
@@ -357,7 +372,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           if (!ok) throw new Error(error || "Failed to read selection");
           const sel = (selection || "").trim();
           if (!sel) throw new Error("No text selected.");
-          const data = await postJSON("/translate", { text: sel, to });
+          const clipped = sel.length > MAX_INPUT_CHARS ? sel.slice(0, MAX_INPUT_CHARS) : sel;
+          const data = await postJSON("/translate", { text: clipped, to }, { timeoutMs: LLM_TIMEOUT_MS });
           return sendResponse(data);
         }
 
@@ -469,7 +485,7 @@ chrome.runtime.onInstalled?.addListener(async () => {
 chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== "ghosttab-analyze" || !info.selectionText) return;
   try {
-    const data = await postJSON("/analyze", { text: info.selectionText });
+    const data = await postJSON("/analyze", { text: info.selectionText.slice(0, MAX_INPUT_CHARS) }, { timeoutMs: LLM_TIMEOUT_MS });
     const conf = data?.sentiment?.confidence;
     try {
       chrome.notifications.create({
@@ -517,7 +533,7 @@ chrome.commands?.onCommand.addListener(async (command) => {
 
   try {
     if (command === "summarize") {
-      await postJSON("/summarize", { text });
+      await postJSON("/summarize", { text: text.slice(0, MAX_INPUT_CHARS) }, { timeoutMs: LLM_TIMEOUT_MS });
       try {
         chrome.notifications.create({
           type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
@@ -525,7 +541,7 @@ chrome.commands?.onCommand.addListener(async (command) => {
         });
       } catch {}
     } else if (command === "rewrite") {
-      await postJSON("/rewrite", { text });
+      await postJSON("/rewrite", { text: text.slice(0, MAX_INPUT_CHARS) }, { timeoutMs: LLM_TIMEOUT_MS });
       try {
         chrome.notifications.create({
           type: "basic", iconUrl: chrome.runtime.getURL("icon.png"),
