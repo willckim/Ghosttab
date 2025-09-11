@@ -1,58 +1,44 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Privacy Policy – GhostTab AI</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Privacy Policy — GhostTab AI</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      max-width: 760px;
-      margin: 40px auto;
-      padding: 0 20px;
-      line-height: 1.6;
-      color: #111827;
-    }
-    h1, h2 { color: #1f2937; }
-    h1 { font-size: 1.8rem; margin-bottom: 1rem; }
-    h2 { font-size: 1.3rem; margin-top: 1.8rem; }
-    a { color: #2563eb; }
+    body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+    h1 { margin-bottom: 1rem; }
+    h2 { margin-top: 1.5rem; }
+    p, ul { line-height: 1.5; }
   </style>
 </head>
 <body>
-  <h1>Privacy Policy for GhostTab AI</h1>
-  <p><strong>Effective Date:</strong> September 9, 2025</p>
+  <h1>Privacy Policy — GhostTab AI</h1>
 
-  <p>GhostTab AI respects your privacy. This extension is designed with user control in mind and does not collect, sell, or share your personal information.</p>
+  <p><strong>Last updated:</strong> <!-- Add date of last update --></p>
 
-  <h2>API Key Storage</h2>
+  <h2>1. Data We Collect</h2>
+  <p>GhostTab AI does not collect any personal or identifying information. Everything you configure in the extension — such as tab limits, Pomodoro settings, themes, or your optional API key — is stored locally in your browser using Chrome's secure storage.</p>
+
+  <h2>2. How It Works</h2>
   <ul>
-    <li>Your API key is stored <strong>locally</strong> in your browser’s extension storage (<code>chrome.storage.local</code>).</li>
-    <li>We never transmit your API key to third parties other than the backend API endpoint you configure.</li>
-    <li>You may clear or update the key at any time via the Options page.</li>
+    <li>When you use AI features (summarize, rewrite, sentiment, etc.), GhostTab sends only the text you provide to our secure API endpoint (hosted on Cloud Run) to generate a response. We do not log or store your browsing history or any other personal data on our servers.</li>
+    <li>The optional API key you enter (for OpenAI or Azure) is included in local storage and used only for authentication in requests from your browser to our backend. We never have access to it.</li>
   </ul>
 
-  <h2>Data Processing</h2>
+  <h2>3. Permissions</h2>
+  <p>GhostTab AI requests the following permissions:</p>
   <ul>
-    <li>GhostTab AI only communicates with the <strong>API base URL you provide</strong>.</li>
-    <li>No analytics, advertising, or telemetry frameworks are used.</li>
-    <li>We do not log, store, or share your browsing data.</li>
+    <li><strong>storage</strong>: to store your settings and Pomodoro log locally.</li>
+    <li><strong>tabs</strong>: to count open tabs for enforcing the tab limit.</li>
+    <li><strong>notifications</strong>: to show alerts and Pomodoro notifications.</li>
+    <li><strong>scripting, activeTab, contextMenus</strong>: for features like summarizing or rewriting page text via the popup or context menu.</li>
   </ul>
 
-  <h2>Security</h2>
-  <ul>
-    <li>The extension is built on the <strong>Chrome MV3 security model</strong> and avoids inline scripts.</li>
-    <li>We recommend using secure HTTPS API endpoints whenever possible.</li>
-    <li>Your configuration and key remain private to your browser unless you opt to sync them manually.</li>
-  </ul>
+  <h2>4. No Tracking or Sharing</h2>
+  <p>GhostTab AI does not use analytics, telemetry, or advertise. We never track you or share your data with third parties.</p>
 
-  <h2>Your Control</h2>
-  <ul>
-    <li>You can clear your stored key at any time in the Options page.</li>
-    <li>Uninstalling the extension removes all locally stored data.</li>
-  </ul>
+  <h2>5. Contact</h2>
+  <p>If you have any questions about how GhostTab handles data, feel free to <a href="https://github.com/willckim/Ghosttab-AI/issues">open an issue on GitHub</a> or email us at [your-support-email@example.com].</p>
 
-  <h2>Contact</h2>
-  <p>If you have questions or concerns, please email <a href="mailto:williamckim11@gmail.com">williamckim11@gmail.com</a>.</p>
+  <p>Thank you for using GhostTab AI — stay focused. 👻</p>
 </body>
 </html>
